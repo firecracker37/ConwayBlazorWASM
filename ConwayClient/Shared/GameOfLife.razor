@@ -1,0 +1,114 @@
+﻿@using Blazor.Extensions.Canvas.Canvas2D
+@using Blazor.Extensions;
+@using ConwayClient.Models;
+
+@inject IJSRuntime JSRuntime
+
+<div class="row">
+    <div class="col s12 center-align">
+        <BECanvas Width="960" Height="540" @ref="_canvasReference"></BECanvas>
+    </div>
+</div>
+
+@code {
+    private Canvas2DContext _context;
+    protected BECanvasComponent _canvasReference;
+    private GameBoard _gameBoard;
+    private DotNetObjectReference<GameOfLife> _objectReference;
+    private Timer _gameTimer;
+
+    private const int CanvasWidth = 960;
+    private const int CanvasHeight = 540;
+
+    [Parameter] public int Rows { get; set; } = 9;
+    [Parameter] public int Columns { get; set; } = 16;
+
+    private int CellWidth => CanvasWidth / Columns;
+    private int CellHeight => CanvasHeight / Rows;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            _objectReference = DotNetObjectReference.Create(this);
+            await JSRuntime.InvokeVoidAsync("addCanvasClickListener", _objectReference);
+            _gameBoard = new GameBoard(Rows, Columns);
+            _context = await _canvasReference.CreateCanvas2DAsync();
+            await DrawGameBoard();
+        }
+    }
+
+    private async Task DrawGameBoard()
+    {
+        for (int row = 0; row < _gameBoard.Rows; row++)
+        {
+            for (int col = 0; col < _gameBoard.Columns; col++)
+            {
+                Cell cell = _gameBoard.Cells[row, col];
+                string fillColor = cell.IsAlive ? "#ff8f00" : "#b0bec5";
+
+                await _context.SetFillStyleAsync(fillColor);
+                await _context.FillRectAsync(col * CellWidth, row * CellHeight, CellWidth, CellHeight);
+                await _context.SetStrokeStyleAsync("white");
+                await _context.StrokeRectAsync(col * CellWidth, row * CellHeight, CellWidth, CellHeight);
+            }
+        }
+    }
+
+    private async Task DrawGameBoard(IEnumerable<Cell> changedCells)
+    {
+        foreach (var cell in changedCells)
+        {
+            string fillColor = cell.IsAlive ? "#ff8f00" : "#b0bec5";
+
+            await _context.SetFillStyleAsync(fillColor);
+            await _context.FillRectAsync(cell.X * CellWidth, cell.Y * CellHeight, CellWidth, CellHeight);
+            await _context.SetStrokeStyleAsync("white");
+            await _context.StrokeRectAsync(cell.X * CellWidth, cell.Y * CellHeight, CellWidth, CellHeight);
+        }
+    }
+
+    public async Task StartGame()
+    {
+        _gameTimer = new Timer(async _ =>
+        {
+            var changedCells = await _gameBoard.UpdateGameStateAsync();
+            await InvokeAsync(() => DrawGameBoard(changedCells));  // Draw only the changed cells
+        }, null, 0, 1000);  // Adjust the interval as needed
+    }
+
+
+
+    public async Task StopGame()
+    {
+        _gameTimer?.Dispose();
+        _gameTimer = null;
+    }
+
+    public async Task ToggleCellState(int row, int col)
+    {
+        // Toggle the cell's state
+        _gameBoard.Cells[row, col].IsAlive = !_gameBoard.Cells[row, col].IsAlive;
+
+        // Redraw the game board to reflect the new state
+        await DrawGameBoard();
+    }
+
+    [JSInvokable]
+    public async Task CanvasClicked(double x, double y)
+    {
+        int col = (int)x / CellWidth;
+        int row = (int)y / CellHeight;
+
+        if (row >= 0 && row < Rows && col >= 0 && col < Columns)
+        {
+            await ToggleCellState(row, col);
+        }
+    }
+
+    // Don't forget to dispose of the DotNetObjectReference
+    public void Dispose()
+    {
+        _objectReference?.Dispose();
+    }
+}

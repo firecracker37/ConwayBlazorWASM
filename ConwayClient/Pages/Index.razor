@@ -1,0 +1,39 @@
+﻿@page "/"
+
+<div class="row">
+    <div class="col s12">
+        <div class="card-panel blue-grey darken-3">
+            <div class="row">
+                <div class="col s4 center-align">
+                    <buton @onclick="StartGame" class="btn">Start</buton>
+                </div>
+                <div class="col s4 center-align">
+                    <buton @onclick="StopGame" class="btn">Stop</buton>
+                </div>
+                <div class="col s4 center-align">
+                    <buton class="btn">Reset</buton>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col s12">
+        <GameOfLife @ref="_gameOfLife" />
+    </div>
+</div>
+
+@code {
+    private GameOfLife _gameOfLife;
+
+    private async Task StartGame()
+    {
+        await _gameOfLife.StartGame();
+    }
+
+    private async Task StopGame()
+    {
+        await _gameOfLife.StopGame();
+    }
+}
