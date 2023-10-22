@@ -44,9 +44,8 @@
 
     public bool IsGameRunning => _gameBoard?.IsRunning ?? false;
 
-    [Parameter] public int Rows { get; set; } = 9;
-    [Parameter] public int Columns { get; set; } = 16;
-    [Parameter] public EventCallback<bool> OnGameStateChanged { get; set; }
+    public int Rows { get; set; } = 9;
+    public int Columns { get; set; } = 16;
 
     private int CellWidth => CanvasWidth / Columns;
     private int CellHeight => CanvasHeight / Rows;
@@ -107,7 +106,7 @@
         await DrawGameBoard();
     }
 
-    public async Task StartGame()
+    public void StartGame()
     {
         if (_gameBoard.IsRunning) return;
         _gameBoard.StartGame();
@@ -116,19 +115,15 @@
             var nextState = _gameBoard.GenerateNextState(); // Generate the next game state
             _gameBoard.UpdateGameState(nextState); // Update the game state with the next state
         }, null, 0, 500);  // Adjust the interval as needed
-
-        await OnGameStateChanged.InvokeAsync(_gameBoard.IsRunning);
     }
 
-    public async Task PauseGame()
+    public void PauseGame()
     {
         if (!_gameBoard.IsRunning) return;
 
         _gameTimer?.Dispose();
         _gameTimer = null;
         _gameBoard.PauseGame();
-
-        await OnGameStateChanged.InvokeAsync(_gameBoard.IsRunning);
     }
 
     public void ToggleCellState(int row, int col)
