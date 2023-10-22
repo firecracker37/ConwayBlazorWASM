@@ -31,6 +31,7 @@
                     const rect = canvas.getBoundingClientRect();
                     const x = event.clientX - rect.left;
                     const y = event.clientY - rect.top;
+                    console.log('{From JS Listner} x:', x, 'y:', y);
                     dotnetHelper.invokeMethodAsync('CanvasClicked', x, y);
                 });
             }

@@ -40,6 +40,8 @@
 
     private async Task DrawGameBoard()
     {
+        if (_gameBoard.IsUpdating) return;
+
         for (int row = 0; row < _gameBoard.Rows; row++)
         {
             for (int col = 0; col < _gameBoard.Columns; col++)
@@ -57,41 +59,57 @@
 
     private async Task DrawGameBoard(IEnumerable<Cell> changedCells)
     {
+        if (_gameBoard.IsUpdating) return;
+
         foreach (var cell in changedCells)
         {
+            Console.WriteLine($"Drawing Cell at ({cell.X}, {cell.Y}) with state {cell.IsAlive}");
+
             string fillColor = cell.IsAlive ? "#ff8f00" : "#b0bec5";
 
             await _context.SetFillStyleAsync(fillColor);
-            await _context.FillRectAsync(cell.X * CellWidth, cell.Y * CellHeight, CellWidth, CellHeight);
+            await _context.FillRectAsync(cell.Y * CellWidth, cell.X * CellHeight, CellWidth, CellHeight);
             await _context.SetStrokeStyleAsync("white");
-            await _context.StrokeRectAsync(cell.X * CellWidth, cell.Y * CellHeight, CellWidth, CellHeight);
+            await _context.StrokeRectAsync(cell.Y * CellWidth, cell.X * CellHeight, CellWidth, CellHeight);
         }
     }
 
     public async Task StartGame()
     {
+        if (_gameBoard.IsRunning) return;
+        _gameBoard.StartGame();
         _gameTimer = new Timer(async _ =>
         {
             var changedCells = await _gameBoard.UpdateGameStateAsync();
             await InvokeAsync(() => DrawGameBoard(changedCells));  // Draw only the changed cells
-        }, null, 0, 1000);  // Adjust the interval as needed
+        }, null, 0, 500);  // Adjust the interval as needed
     }
 
 
 
-    public async Task StopGame()
+    public async Task PauseGame()
     {
+        if (!_gameBoard.IsRunning) return;
+
+        await _gameBoard.StartUpdateAsync();  // This will wait for ongoing updates to finish
+        _gameBoard.FinishUpdate();  // Release the semaphore immediately after acquiring it
+
         _gameTimer?.Dispose();
         _gameTimer = null;
+        _gameBoard.PauseGame();
     }
 
     public async Task ToggleCellState(int row, int col)
     {
         // Toggle the cell's state
-        _gameBoard.Cells[row, col].IsAlive = !_gameBoard.Cells[row, col].IsAlive;
+        var changedCell = _gameBoard.Cells[row, col];
+        changedCell.IsAlive = !changedCell.IsAlive;
+        Console.WriteLine($"Toggling cell at row {changedCell.X}, col {changedCell.Y} to {changedCell.IsAlive}");
+        // Create a list with the changed cell
+        var changedCells = new List<Cell> { changedCell };
 
-        // Redraw the game board to reflect the new state
-        await DrawGameBoard();
+        // Redraw the changed cell on the game board
+        await DrawGameBoard(changedCells);
     }
 
     [JSInvokable]
@@ -106,9 +124,22 @@
         }
     }
 
+    public async Task ResetGame()
+    {
+        _gameBoard.ResetGame();
+        await DrawGameBoard();  // Redraw the game board
+    }
+
+    public async Task RandomizeBoard()
+    {
+        _gameBoard.RandomizeBoard();
+        await DrawGameBoard();  // Redraw the game board
+    }
+
     // Don't forget to dispose of the DotNetObjectReference
     public void Dispose()
     {
+        _gameTimer?.Dispose();
         _objectReference?.Dispose();
     }
 }
