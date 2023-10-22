@@ -12,7 +12,15 @@
 </head>
 
 <body>
-    <div id="app">Loading...</div>
+    <div id="app">
+        <div id="loading-container">
+            <div>
+                <h1>Conway's Game of Life</h1>
+                <div id="loading-square"></div>
+                <h3>Loading...</h3>
+            </div>
+        </div>
+    </div>
 
     <div id="blazor-error-ui">
         An unhandled error has occurred.
@@ -24,6 +32,14 @@
     <script src="/_framework/blazor.webassembly.js"></script>
 
     <script>
+        window.requestAnimationLoop = (dotnetHelper) => {
+            const loop = () => {
+                dotnetHelper.invokeMethodAsync('Render');
+                requestAnimationFrame(loop);
+            };
+            loop();
+        };
+
         window.addCanvasClickListener = (dotnetHelper) => {
             const canvas = document.querySelector('canvas');
             if (canvas) {
@@ -31,7 +47,6 @@
                     const rect = canvas.getBoundingClientRect();
                     const x = event.clientX - rect.left;
                     const y = event.clientY - rect.top;
-                    console.log('{From JS Listner} x:', x, 'y:', y);
                     dotnetHelper.invokeMethodAsync('CanvasClicked', x, y);
                 });
             }
