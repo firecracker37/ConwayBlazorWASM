@@ -66,7 +66,7 @@
 
         foreach (var cell in changedCells)
         {
-            Console.WriteLine($"Drawing Cell at ({cell.X}, {cell.Y}) with state {cell.IsAlive}");
+            //Console.WriteLine($"Drawing Cell at ({cell.X}, {cell.Y}) with state {cell.IsAlive}");
 
             string fillColor = cell.IsAlive ? "#ff8f00" : "#b0bec5";
 
@@ -83,7 +83,8 @@
         _gameBoard.StartGame();
         _gameTimer = new Timer(async _ =>
         {
-            var changedCells = await _gameBoard.UpdateGameStateAsync();
+            var nextState = _gameBoard.GenerateNextState(); // Generate the next game state
+            await _gameBoard.UpdateGameStateAsync(nextState); // Update the game state with the next state
             await InvokeAsync(() => DrawGameBoard());
         }, null, 0, 500);  // Adjust the interval as needed
 
@@ -108,15 +109,17 @@
 
     public async Task ToggleCellState(int row, int col)
     {
-        // Toggle the cell's state
-        var changedCell = _gameBoard.Cells[row, col];
-        changedCell.IsAlive = !changedCell.IsAlive;
-        Console.WriteLine($"Toggling cell at row {changedCell.X}, col {changedCell.Y} to {changedCell.IsAlive}");
-        // Create a list with the changed cell
-        var changedCells = new List<Cell> { changedCell };
+        // Create a copy of the current state
+        var toggledState = (Cell[,])_gameBoard.Cells.Clone();
 
-        // Redraw the changed cell on the game board
-        await DrawGameBoard(changedCells);
+        // Toggle the cell's state in the copied state
+        toggledState[row, col].IsAlive = !toggledState[row, col].IsAlive;
+
+        // Update the game state with the toggled state
+        await _gameBoard.UpdateGameStateAsync(toggledState);
+
+        // Redraw the game board
+        await DrawGameBoard();
     }
 
     [JSInvokable]
@@ -133,13 +136,13 @@
 
     public async Task ResetGame()
     {
-        _gameBoard.ResetGame();
+        await _gameBoard.ResetGame();
         await DrawGameBoard();
     }
 
     public async Task RandomizeBoard()
     {
-        _gameBoard.RandomizeBoard();
+        await _gameBoard.RandomizeBoard();
         await DrawGameBoard();
     }
 

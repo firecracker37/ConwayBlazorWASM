@@ -1,7 +1,10 @@
-﻿namespace ConwayClient.Models
+﻿using System.Diagnostics;
+
+namespace ConwayClient.Models
 {
     public class GameBoard
     {
+        private Stack<Cell[,]> _previousStates = new Stack<Cell[,]>();
         public Cell[,] Cells { get; private set; }
         public int Rows { get; }
         public int Columns { get; }
@@ -68,84 +71,106 @@
             return aliveNeighbors;
         }
 
-        public async Task<List<Cell>> UpdateGameStateAsync()
+        public Cell[,] GenerateNextState()
         {
-            await StartUpdateAsync();  // Wait for any ongoing updates to finish
+            Cell[,] nextGameState = new Cell[Rows, Columns];
 
-            try
-            {
-                return await Task.Run(() =>
-                {
-                    IsUpdating = true;
-
-                    var changedCells = new List<Cell>();
-                    Cell[,] nextGameState = new Cell[Rows, Columns];
-
-                    for (int x = 0; x < Rows; x++)
-                    {
-                        for (int y = 0; y < Columns; y++)
-                        {
-                            var cell = Cells[x, y];
-                            var aliveNeighbors = GetAliveNeighborsCount(x, y);
-
-                            nextGameState[x, y] = new Cell(x, y, cell.IsAlive); // Copy the current state to the next state
-
-                            if (cell.IsAlive)
-                            {
-                                if (aliveNeighbors < 2 || aliveNeighbors > 3)
-                                {
-                                    Console.WriteLine($"Updating Cell at ({cell.X}, {cell.Y}) to {cell.IsAlive}");
-                                    nextGameState[x, y].IsAlive = false; // Cell dies
-                                    changedCells.Add(nextGameState[x, y]); // Add to changed cells list
-                                }
-                            }
-                            else
-                            {
-                                if (aliveNeighbors == 3)
-                                {
-                                    Console.WriteLine($"Updating Cell at ({cell.X}, {cell.Y}) to {cell.IsAlive}");
-                                    nextGameState[x, y].IsAlive = true; // Cell becomes alive
-                                    changedCells.Add(nextGameState[x, y]); // Add to changed cells list
-                                }
-                            }
-                        }
-                    }
-
-                    Cells = nextGameState; // Update the game state in a batch
-                    IsUpdating = false;
-
-                    return changedCells; // Return the list of cells that changed state
-                });
-            }
-            finally
-            {
-                FinishUpdate();  // Release the semaphore after the update
-            }
-        }
-
-        public void ResetGame()
-        {
             for (int x = 0; x < Rows; x++)
             {
                 for (int y = 0; y < Columns; y++)
                 {
-                    Cells[x, y].IsAlive = false;
+                    var cell = Cells[x, y];
+                    var aliveNeighbors = GetAliveNeighborsCount(x, y);
+
+                    nextGameState[x, y] = new Cell(x, y, cell.IsAlive); // Copy the current state to the next state
+
+                    if (cell.IsAlive)
+                    {
+                        if (aliveNeighbors < 2 || aliveNeighbors > 3)
+                        {
+                            nextGameState[x, y].IsAlive = false; // Cell dies
+                        }
+                    }
+                    else
+                    {
+                        if (aliveNeighbors == 3)
+                        {
+                            nextGameState[x, y].IsAlive = true; // Cell becomes alive
+                        }
+                    }
                 }
+            }
+
+            return nextGameState;
+        }
+
+        public Cell[,] GetPreviousState()
+        {
+            if (_previousStates.Count > 0)
+            {
+                return _previousStates.Pop();  // Retrieve the last stored state
+            }
+            else
+            {
+                // Handle the case where there are no more stored states
+                // Perhaps return the current state, or handle this situation in another appropriate way for your application
+                return Cells;
             }
         }
 
-        public void RandomizeBoard()
+        public async Task UpdateGameStateAsync(Cell[,] nextState)
         {
-            ResetGame();
+            await StartUpdateAsync();  // Wait for any ongoing updates to finish
+            IsUpdating = true;
+            Stopwatch stopwatch = Stopwatch.StartNew();
+            _previousStates.Push(Cells);
+
+            try
+            {
+                await Task.Run(() =>
+                {
+                    Cells = nextState; // Update the game state in a batch
+                });
+            }
+            finally
+            {
+                IsUpdating = false;
+                stopwatch.Stop();  // Stop the stopwatch
+                Console.WriteLine($"Game state updated in {stopwatch.Elapsed.TotalMilliseconds} ms");
+                FinishUpdate();  // Release the semaphore after the update
+            }
+        }
+
+        public async Task ResetGame()
+        {
+            Cell[,] resetState = new Cell[Rows, Columns];
+
+            for (int x = 0; x < Rows; x++)
+            {
+                for (int y = 0; y < Columns; y++)
+                {
+                    resetState[x, y] = new Cell(x, y, false);
+                }
+            }
+
+            await UpdateGameStateAsync(resetState);
+            _previousStates.Clear();
+        }
+
+        public async Task RandomizeBoard()
+        {
+            Cell[,] randomState = new Cell[Rows, Columns];
             Random random = new Random();
 
             for (int x = 0; x < Rows; x++)
             {
                 for (int y = 0; y < Columns; y++)
                 {
-                    Cells[x, y].IsAlive = random.Next(2) == 0;  // This will randomly set the cell to be alive or dead
+                    randomState[x, y] = new Cell(x, y, random.Next(2) == 0);
                 }
             }
+
+            await UpdateGameStateAsync(randomState);
         }
 
     }
