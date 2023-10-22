@@ -6,6 +6,27 @@
 @inject IJSRuntime JSRuntime
 
 <div class="row">
+    <div class="col s12">
+        <div class="card-panel blue-grey darken-3">
+            <div class="row">
+                <div class="col s3 center-align">
+                    <button @onclick="StartGame" class="btn" disabled="@IsGameRunning">Start</button>
+                </div>
+                <div class="col s3 center-align">
+                    <button @onclick="PauseGame" class="btn" disabled="@( ! IsGameRunning)">Pause</button>
+                </div>
+
+                <div class="col s3 center-align">
+                    <buton @onclick="ResetGame" class="btn" disabled="@IsGameRunning">Reset</buton>
+                </div>
+                <div class="col s3 center-align">
+                    <buton @onclick="RandomizeBoard" class="btn" disabled="@IsGameRunning">Randomize</buton>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="row">
     <div class="col s12 center-align">
         <BECanvas Width="@CanvasWidth" Height="@CanvasHeight" @ref="_canvasReference"></BECanvas>
     </div>
@@ -21,7 +42,7 @@
     private const int CanvasWidth = 960;
     private const int CanvasHeight = 540;
 
-    public bool IsGameRunning => _gameBoard.IsRunning;
+    public bool IsGameRunning => _gameBoard?.IsRunning ?? false;
 
     [Parameter] public int Rows { get; set; } = 9;
     [Parameter] public int Columns { get; set; } = 16;
