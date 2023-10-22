@@ -21,6 +21,12 @@ jobs:
       - name: Publish
         run: dotnet publish -c Release -o out
 
+      - name: Make Script Executable
+        run: chmod +x update-base-url.sh
+
+      - name: Update Base URL
+        run: ./update-base-url.sh out/wwwroot/index.html
+
       - name: Deploy to GitHub Pages
         uses: JamesIves/github-pages-deploy-action@v4
         with:

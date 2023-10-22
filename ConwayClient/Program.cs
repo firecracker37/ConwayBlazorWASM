@@ -11,15 +11,4 @@ builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri(builder.
 
 var host = builder.Build();
 
-if (builder.HostEnvironment.IsDevelopment())
-{
-    var jsRuntime = host.Services.GetRequiredService<IJSRuntime>();
-    await jsRuntime.InvokeVoidAsync("setBaseUrl", "/");
-}
-else
-{
-    var jsRuntime = host.Services.GetRequiredService<IJSRuntime>();
-    await jsRuntime.InvokeVoidAsync("setBaseUrl", "/ConwayBlazorWASM/");
-}
-
 await host.RunAsync();
