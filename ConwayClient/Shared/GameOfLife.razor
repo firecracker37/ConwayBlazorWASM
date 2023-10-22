@@ -84,7 +84,7 @@
         _gameTimer = new Timer(async _ =>
         {
             var changedCells = await _gameBoard.UpdateGameStateAsync();
-            await InvokeAsync(() => DrawGameBoard(changedCells));  // Draw only the changed cells
+            await InvokeAsync(() => DrawGameBoard());
         }, null, 0, 500);  // Adjust the interval as needed
 
         await OnGameStateChanged.InvokeAsync(_gameBoard.IsRunning);
@@ -134,16 +134,15 @@
     public async Task ResetGame()
     {
         _gameBoard.ResetGame();
-        await DrawGameBoard();  // Redraw the game board
+        await DrawGameBoard();
     }
 
     public async Task RandomizeBoard()
     {
         _gameBoard.RandomizeBoard();
-        await DrawGameBoard();  // Redraw the game board
+        await DrawGameBoard();
     }
 
-    // Don't forget to dispose of the DotNetObjectReference
     public void Dispose()
     {
         _gameTimer?.Dispose();
