@@ -141,7 +141,25 @@ namespace ConwayClient.Models
             }
         }
 
-        public async Task ResetGame()
+        public void UpdateGameState(Cell[,] nextState)
+        {
+            IsUpdating = true;
+            Stopwatch stopwatch = Stopwatch.StartNew();
+            _previousStates.Push(Cells);
+
+            try
+            {
+                Cells = nextState; // Update the game state directly
+            }
+            finally
+            {
+                IsUpdating = false;
+                stopwatch.Stop();  // Stop the stopwatch
+                Console.WriteLine($"Game state updated in {stopwatch.Elapsed.TotalMilliseconds} ms");
+            }
+        }
+
+        public void ResetGame()
         {
             Cell[,] resetState = new Cell[Rows, Columns];
 
@@ -153,11 +171,11 @@ namespace ConwayClient.Models
                 }
             }
 
-            await UpdateGameStateAsync(resetState);
+            UpdateGameState(resetState); // Updated to use the synchronous method
             _previousStates.Clear();
         }
 
-        public async Task RandomizeBoard()
+        public void RandomizeBoard()
         {
             Cell[,] randomState = new Cell[Rows, Columns];
             Random random = new Random();
@@ -170,8 +188,7 @@ namespace ConwayClient.Models
                 }
             }
 
-            await UpdateGameStateAsync(randomState);
+            UpdateGameState(randomState); // Updated to use the synchronous method
         }
-
     }
 }

@@ -1,6 +1,7 @@
 ﻿@using Blazor.Extensions.Canvas.Canvas2D
 @using Blazor.Extensions;
 @using ConwayClient.Models;
+@using System.Diagnostics;
 
 @inject IJSRuntime JSRuntime
 
@@ -34,16 +35,24 @@
         if (firstRender)
         {
             _objectReference = DotNetObjectReference.Create(this);
+
+            // Initialize the continuous rendering loop
+            await JSRuntime.InvokeVoidAsync("requestAnimationLoop", _objectReference);
+
+            // Add canvas click listener
             await JSRuntime.InvokeVoidAsync("addCanvasClickListener", _objectReference);
+
             _gameBoard = new GameBoard(Rows, Columns);
             _context = await _canvasReference.CreateCanvas2DAsync();
-            await DrawGameBoard();
         }
     }
 
     private async Task DrawGameBoard()
     {
-        if (_gameBoard.IsUpdating) return;
+        if (_gameBoard == null || _gameBoard.IsUpdating) return;
+        var watch = Stopwatch.StartNew();
+
+        var tasks = new List<Task>();
 
         for (int row = 0; row < _gameBoard.Rows; row++)
         {
@@ -52,29 +61,29 @@
                 Cell cell = _gameBoard.Cells[row, col];
                 string fillColor = cell.IsAlive ? "#ff8f00" : "#b0bec5";
 
-                await _context.SetFillStyleAsync(fillColor);
-                await _context.FillRectAsync(col * CellWidth, row * CellHeight, CellWidth, CellHeight);
-                await _context.SetStrokeStyleAsync("white");
-                await _context.StrokeRectAsync(col * CellWidth, row * CellHeight, CellWidth, CellHeight);
+                tasks.Add(_context.SetFillStyleAsync(fillColor));
+                tasks.Add(_context.FillRectAsync(col * CellWidth, row * CellHeight, CellWidth, CellHeight));
+                tasks.Add(_context.SetStrokeStyleAsync("white"));
+                tasks.Add(_context.StrokeRectAsync(col * CellWidth, row * CellHeight, CellWidth, CellHeight));
             }
         }
+
+        await Task.WhenAll(tasks);
+
+        watch.Stop();
+        var frameTime = watch.Elapsed.TotalSeconds;  // time taken to render the frame
+        var fps = frameTime > 0 ? 1.0 / frameTime : 0;  // calculate FPS
+
+        // Display the FPS
+        await _context.SetFontAsync("16px sans-serif");
+        await _context.SetFillStyleAsync("black");
+        await _context.FillTextAsync($"FPS: {fps:F2}", CanvasWidth - 80, 20);  // adjust the position as needed
     }
 
-    private async Task DrawGameBoard(IEnumerable<Cell> changedCells)
+    [JSInvokable]
+    public async Task Render()
     {
-        if (_gameBoard.IsUpdating) return;
-
-        foreach (var cell in changedCells)
-        {
-            //Console.WriteLine($"Drawing Cell at ({cell.X}, {cell.Y}) with state {cell.IsAlive}");
-
-            string fillColor = cell.IsAlive ? "#ff8f00" : "#b0bec5";
-
-            await _context.SetFillStyleAsync(fillColor);
-            await _context.FillRectAsync(cell.Y * CellWidth, cell.X * CellHeight, CellWidth, CellHeight);
-            await _context.SetStrokeStyleAsync("white");
-            await _context.StrokeRectAsync(cell.Y * CellWidth, cell.X * CellHeight, CellWidth, CellHeight);
-        }
+        await DrawGameBoard();
     }
 
     public async Task StartGame()
@@ -84,21 +93,16 @@
         _gameTimer = new Timer(async _ =>
         {
             var nextState = _gameBoard.GenerateNextState(); // Generate the next game state
-            await _gameBoard.UpdateGameStateAsync(nextState); // Update the game state with the next state
+            _gameBoard.UpdateGameState(nextState); // Update the game state with the next state
             await InvokeAsync(() => DrawGameBoard());
         }, null, 0, 500);  // Adjust the interval as needed
 
         await OnGameStateChanged.InvokeAsync(_gameBoard.IsRunning);
     }
 
-
-
     public async Task PauseGame()
     {
         if (!_gameBoard.IsRunning) return;
-
-        await _gameBoard.StartUpdateAsync();  // This will wait for ongoing updates to finish
-        _gameBoard.FinishUpdate();  // Release the semaphore immediately after acquiring it
 
         _gameTimer?.Dispose();
         _gameTimer = null;
@@ -107,42 +111,32 @@
         await OnGameStateChanged.InvokeAsync(_gameBoard.IsRunning);
     }
 
-    public async Task ToggleCellState(int row, int col)
+    public void ToggleCellState(int row, int col)
     {
-        // Create a copy of the current state
-        var toggledState = (Cell[,])_gameBoard.Cells.Clone();
-
-        // Toggle the cell's state in the copied state
-        toggledState[row, col].IsAlive = !toggledState[row, col].IsAlive;
-
-        // Update the game state with the toggled state
-        await _gameBoard.UpdateGameStateAsync(toggledState);
-
-        // Redraw the game board
-        await DrawGameBoard();
+        _gameBoard.Cells[row, col].IsAlive = !_gameBoard.Cells[row, col].IsAlive;
     }
 
     [JSInvokable]
-    public async Task CanvasClicked(double x, double y)
+    public void CanvasClicked(double x, double y)
     {
         int col = (int)x / CellWidth;
         int row = (int)y / CellHeight;
 
         if (row >= 0 && row < Rows && col >= 0 && col < Columns)
         {
-            await ToggleCellState(row, col);
+            ToggleCellState(row, col);
         }
     }
 
     public async Task ResetGame()
     {
-        await _gameBoard.ResetGame();
+        _gameBoard.ResetGame();
         await DrawGameBoard();
     }
 
     public async Task RandomizeBoard()
     {
-        await _gameBoard.RandomizeBoard();
+        _gameBoard.RandomizeBoard();
         await DrawGameBoard();
     }
 
