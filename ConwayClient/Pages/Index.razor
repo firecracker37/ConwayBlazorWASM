@@ -48,12 +48,12 @@
         await _gameOfLife.PauseGame();
     }
 
-    private async Task ResetGame()
+    private void ResetGame()
     {
-        await _gameOfLife.ResetGame();
+        _gameOfLife.ResetGame();
     }
-    private async Task RandomizeBoard()
+    private void RandomizeBoard()
     {
-        await _gameOfLife.RandomizeBoard();
+        _gameOfLife.RandomizeBoard();
     }
 }

@@ -9,9 +9,6 @@ namespace ConwayClient.Models
         public int Rows { get; }
         public int Columns { get; }
         public bool IsRunning { get; private set; }
-        public bool IsUpdating { get; private set; }
-        private SemaphoreSlim _updateSemaphore = new SemaphoreSlim(1, 1);
-
 
         public GameBoard(int rows, int columns)
         {
@@ -37,16 +34,6 @@ namespace ConwayClient.Models
         public void PauseGame()
         {
             IsRunning = false;
-        }
-
-        public async Task StartUpdateAsync()
-        {
-            await _updateSemaphore.WaitAsync();
-        }
-
-        public void FinishUpdate()
-        {
-            _updateSemaphore.Release();
         }
 
         public int GetAliveNeighborsCount(int x, int y)
@@ -118,43 +105,18 @@ namespace ConwayClient.Models
             }
         }
 
-        public async Task UpdateGameStateAsync(Cell[,] nextState)
-        {
-            await StartUpdateAsync();  // Wait for any ongoing updates to finish
-            IsUpdating = true;
-            Stopwatch stopwatch = Stopwatch.StartNew();
-            _previousStates.Push(Cells);
-
-            try
-            {
-                await Task.Run(() =>
-                {
-                    Cells = nextState; // Update the game state in a batch
-                });
-            }
-            finally
-            {
-                IsUpdating = false;
-                stopwatch.Stop();  // Stop the stopwatch
-                Console.WriteLine($"Game state updated in {stopwatch.Elapsed.TotalMilliseconds} ms");
-                FinishUpdate();  // Release the semaphore after the update
-            }
-        }
-
         public void UpdateGameState(Cell[,] nextState)
         {
-            IsUpdating = true;
             Stopwatch stopwatch = Stopwatch.StartNew();
             _previousStates.Push(Cells);
 
             try
             {
-                Cells = nextState; // Update the game state directly
+                Cells = nextState;
             }
             finally
             {
-                IsUpdating = false;
-                stopwatch.Stop();  // Stop the stopwatch
+                stopwatch.Stop();
                 Console.WriteLine($"Game state updated in {stopwatch.Elapsed.TotalMilliseconds} ms");
             }
         }
@@ -171,7 +133,7 @@ namespace ConwayClient.Models
                 }
             }
 
-            UpdateGameState(resetState); // Updated to use the synchronous method
+            UpdateGameState(resetState);
             _previousStates.Clear();
         }
 
@@ -188,7 +150,7 @@ namespace ConwayClient.Models
                 }
             }
 
-            UpdateGameState(randomState); // Updated to use the synchronous method
+            UpdateGameState(randomState);
         }
     }
 }

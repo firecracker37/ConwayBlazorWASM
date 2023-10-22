@@ -49,7 +49,7 @@
 
     private async Task DrawGameBoard()
     {
-        if (_gameBoard == null || _gameBoard.IsUpdating) return;
+        if (_gameBoard == null) return;
         var watch = Stopwatch.StartNew();
 
         var tasks = new List<Task>();
@@ -77,7 +77,7 @@
         // Display the FPS
         await _context.SetFontAsync("16px sans-serif");
         await _context.SetFillStyleAsync("black");
-        await _context.FillTextAsync($"FPS: {fps:F2}", CanvasWidth - 80, 20);  // adjust the position as needed
+        await _context.FillTextAsync($"FPS: {fps:F2}", CanvasWidth - 80, 20);
     }
 
     [JSInvokable]
@@ -90,11 +90,10 @@
     {
         if (_gameBoard.IsRunning) return;
         _gameBoard.StartGame();
-        _gameTimer = new Timer(async _ =>
+        _gameTimer = new Timer( _ =>
         {
             var nextState = _gameBoard.GenerateNextState(); // Generate the next game state
             _gameBoard.UpdateGameState(nextState); // Update the game state with the next state
-            await InvokeAsync(() => DrawGameBoard());
         }, null, 0, 500);  // Adjust the interval as needed
 
         await OnGameStateChanged.InvokeAsync(_gameBoard.IsRunning);
@@ -113,7 +112,14 @@
 
     public void ToggleCellState(int row, int col)
     {
-        _gameBoard.Cells[row, col].IsAlive = !_gameBoard.Cells[row, col].IsAlive;
+        // Create a copy of the current state
+        var toggledState = (Cell[,])_gameBoard.Cells.Clone();
+
+        // Toggle the cell's state in the copied state
+        toggledState[row, col].IsAlive = !toggledState[row, col].IsAlive;
+
+        // Update the game state with the toggled state
+        _gameBoard.UpdateGameState(toggledState);
     }
 
     [JSInvokable]
@@ -128,16 +134,14 @@
         }
     }
 
-    public async Task ResetGame()
+    public void ResetGame()
     {
         _gameBoard.ResetGame();
-        await DrawGameBoard();
     }
 
-    public async Task RandomizeBoard()
+    public void RandomizeBoard()
     {
         _gameBoard.RandomizeBoard();
-        await DrawGameBoard();
     }
 
     public void Dispose()
