@@ -9,8 +9,8 @@
     "assembly": {
       "Blazor.Extensions.Canvas.dll": "sha256-W20pWMXQg2yTv0w4VJhrjCJKNRYe3PiUU9S76XipNe8=",
       "Blazor.Extensions.Canvas.JS.dll": "sha256-TrW1uaSNUS+J8xVJErxIf1NQuNC7kn50KzMYYF\/4JtM=",
-      "ConwayClient.dll": "sha256-dW0Suwh7BDnBudrhz31qoc4LrAnphc4CdNpT1Hyf9wo=",
-      "Microsoft.AspNetCore.Components.dll": "sha256-V8mLYYGAQg+z8PSRSCJap9eaXYxz7671YYTivTXBgfI=",
+      "ConwayClient.dll": "sha256-wA1bUO7FUrbToGK6CFOwDH9R9DCEI\/qnfdLzt5W4ZC8=",
+      "Microsoft.AspNetCore.Components.dll": "sha256-0du2k2DXO\/u1T0u6\/y9djuDG\/nESS7hu5ietKRDnO4k=",
       "Microsoft.AspNetCore.Components.Web.dll": "sha256-TRr05jMZzrANB34c8na6dFxTc2vRq+oanVac1I7\/GIc=",
       "Microsoft.AspNetCore.Components.WebAssembly.dll": "sha256-baKCtIss3QXEU6\/YaTn6w1StGtCNFjZPnqpLtne4B3w=",
       "Microsoft.Extensions.Configuration.Abstractions.dll": "sha256-X\/f4fDl2cuIRXeWHhK\/f2UqQbFioD+RU4a4CEh0zrrQ=",
@@ -32,13 +32,12 @@
       "System.Memory.dll": "sha256-gp0Pxwny2xmF0Lb\/S+AtCuhGu46h2RzVoaN3tv0ZZQQ=",
       "System.Net.Http.dll": "sha256-j432y792tw6Uu0CJXqj9JLZb\/lOC7nB3Wjsj63LggIU=",
       "System.Net.Primitives.dll": "sha256-ygzfvJr5EKuZzhBw76A4IXLunOfyjxYtjaGOwOh1mHY=",
-      "System.Private.CoreLib.dll": "sha256-K\/czHZiPtAohhQyR8qx3FHKd4M7EDGXVHxc4SDdCnUM=",
+      "System.Private.CoreLib.dll": "sha256-gPD5NXBGc394RbQTK9pRh3qIlLHPOvB4uiMQmkGKDPY=",
       "System.Private.Uri.dll": "sha256-velIzRh5p8jIBAInXKgTBfA3UpEdvUirnFTywXfrKuA=",
-      "System.Runtime.dll": "sha256-7abUed5RmSyei09PBOT+yuW9eRhE40qv9A23fpMFntQ=",
+      "System.Runtime.dll": "sha256-0AR4LBxWcfu6woaXXudNMSh5xHrIj6XPpAMJp4jhpuY=",
       "System.Runtime.InteropServices.JavaScript.dll": "sha256-D8\/C0BnYCr1c14hzZBQdcIBBO6iuj8b2eBOhfuGQ1eQ=",
       "System.Text.Encodings.Web.dll": "sha256-h4qhYKCTjcv426dOcaYqzFWRtOL2fIwUotle78wc1gE=",
-      "System.Text.Json.dll": "sha256-Fve7pyLQlD7Fw9rHD\/HfkcB8zqHJquPiMFB9EFICD0Y=",
-      "System.Threading.dll": "sha256-yFtgcG2JAOw6ce4T\/ZR3En2rII1NORHZpGRu0nOj5wg="
+      "System.Text.Json.dll": "sha256-Fve7pyLQlD7Fw9rHD\/HfkcB8zqHJquPiMFB9EFICD0Y="
     },
     "extensions": null,
     "lazyAssembly": null,
