@@ -5,16 +5,17 @@
         <div class="card-panel blue-grey darken-3">
             <div class="row">
                 <div class="col s3 center-align">
-                    <buton @onclick="StartGame" class="btn">Start</buton>
+                    <button @onclick="StartGame" class="btn" disabled="@isGameRunning">Start</button>
                 </div>
                 <div class="col s3 center-align">
-                    <buton @onclick="PauseGame" class="btn">Pause</buton>
+                    <button @onclick="PauseGame" class="btn" disabled="@( ! isGameRunning)">Pause</button>
+                </div>
+
+                <div class="col s3 center-align">
+                    <buton @onclick="ResetGame" class="btn" disabled="@isGameRunning">Reset</buton>
                 </div>
                 <div class="col s3 center-align">
-                    <buton @onclick="ResetGame" class="btn">Reset</buton>
-                </div>
-                <div class="col s3 center-align">
-                    <buton @onclick="RandomizeBoard" class="btn">Randomize</buton>
+                    <buton @onclick="RandomizeBoard" class="btn" disabled="@isGameRunning">Randomize</buton>
                 </div>
             </div>
         </div>
@@ -23,12 +24,19 @@
 
 <div class="row">
     <div class="col s12">
-        <GameOfLife @ref="_gameOfLife" />
+        <GameOfLife OnGameStateChanged="HandleGameStateChanged" @ref="_gameOfLife" />
     </div>
 </div>
 
 @code {
+    private bool isGameRunning;
+
     private GameOfLife _gameOfLife;
+
+    private void HandleGameStateChanged(bool isRunning)
+    {
+        isGameRunning = isRunning;
+    }
 
     private async Task StartGame()
     {
