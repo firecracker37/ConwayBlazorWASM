@@ -72,18 +72,39 @@
             ctx.stroke();
         };
 
-        window.transferContent = () => {
+        window.createBufferCanvas = (width, height) => {
+            const bufferCanvas = new OffscreenCanvas(width, height);
+            return bufferCanvas;
+        };
+
+        window.transferGridContent = () => {
             var canvases = document.querySelectorAll('canvas');
-            if (canvases.length < 2) {
-                console.error('Expected at least two canvas elements but found ' + canvases.length);
+            if (canvases.length < 3) {
+                console.error('Expected at least three canvas elements but found ' + canvases.length);
                 return;
             }
 
             var mainCanvas = canvases[0];
-            var offscreenCanvas = canvases[1];
-
+            var gridCanvas = canvases[1]; // Canvas for grid lines
             var mainContext = mainCanvas.getContext('2d');
-            mainContext.drawImage(offscreenCanvas, 0, 0);
+
+            // Transfer grid lines
+            mainContext.drawImage(gridCanvas, 0, 0);
+        };
+
+        window.transferBufferContent = () => {
+            var canvases = document.querySelectorAll('canvas');
+            if (canvases.length < 3) {
+                console.error('Expected at least three canvas elements but found ' + canvases.length);
+                return;
+            }
+
+            var mainCanvas = canvases[0];
+            var bufferCanvas = canvases[2]; // Canvas for buffering game state
+            var mainContext = mainCanvas.getContext('2d');
+
+            // Transfer game state from buffer canvas
+            mainContext.drawImage(bufferCanvas, 0, 0);
         };
     </script>
 

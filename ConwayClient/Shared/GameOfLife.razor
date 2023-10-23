@@ -32,6 +32,7 @@
         <BECanvas Width="@CanvasWidth" Height="@CanvasHeight" @ref="_canvasReference"></BECanvas>
         <div style="visibility: hidden">
             <BECanvas Width="@CanvasWidth" Height="@CanvasHeight" @ref="_offscreenCanvasReference"></BECanvas>
+            <BECanvas Width="@CanvasWidth" Height="@CanvasHeight" @ref="_bufferCanvasReference"></BECanvas>
         </div>
     </div>
 </div>
@@ -41,6 +42,8 @@
     protected BECanvasComponent _canvasReference;
     private Canvas2DContext _offscreenContext;
     protected BECanvasComponent _offscreenCanvasReference;
+    private Canvas2DContext _bufferContext;
+    protected BECanvasComponent _bufferCanvasReference;
     private GameBoard _gameBoard;
     private DotNetObjectReference<GameOfLife> _objectReference;
     private Timer _gameTimer;
@@ -56,6 +59,8 @@
     private int CellWidth => CanvasWidth / Columns;
     private int CellHeight => CanvasHeight / Rows;
 
+    private List<Cell> _updatedCells = new List<Cell>();
+
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender)
@@ -68,6 +73,10 @@
             // Initialize the offscreen canvas and draw grid lines on it
             _offscreenContext = await _offscreenCanvasReference.CreateCanvas2DAsync();
             await DrawGridLines(_offscreenContext, CanvasWidth, CanvasHeight, CellWidth, CellHeight);
+
+            // Initialize the buffer canvas
+            _bufferContext = await _bufferCanvasReference.CreateCanvas2DAsync();
+            await _bufferContext.ClearRectAsync(0, 0, CanvasWidth, CanvasHeight);
 
             // Start the continuous rendering loop
             await JSRuntime.InvokeVoidAsync("requestAnimationLoop", _objectReference);
@@ -109,41 +118,49 @@
 
         var watch = Stopwatch.StartNew();
 
-        // Clear the main canvas with the dead cell color
+        // Fill the main canvas with the dead cell color
         await _context.SetFillStyleAsync("#b0bec5");
         await _context.FillRectAsync(0, 0, CanvasWidth, CanvasHeight);
 
-        // Transfer content from offscreen canvas to main canvas
-        await JSRuntime.InvokeVoidAsync("transferContent");
+        // Transfer content from offscreen canvas (grid) to main canvas
+        if (!IsGameRunning) await JSRuntime.InvokeVoidAsync("transferGridContent");
 
-        await _context.BeginBatchAsync();  // Begin batched drawing operations
+        // Draw only the updated cells on the buffer canvas
+        await _bufferContext.BeginBatchAsync();
 
-        // Set the fill style for alive cells
-        await _context.SetFillStyleAsync("#ff8f00");
+        var updatedCells = _gameBoard.GetUpdatedCells();
 
-        // Draw alive cells
-        for (int row = 0; row < _gameBoard.Rows; row++)
+        // Draw all alive cells
+        await _bufferContext.SetFillStyleAsync("#ff8f00"); // Alive cell color
+        foreach (var cell in updatedCells.Where(c => c.IsAlive))
         {
-            for (int col = 0; col < _gameBoard.Columns; col++)
-            {
-                if (_gameBoard.Cells[row, col].IsAlive)
-                {
-                    await _context.FillRectAsync(col * CellWidth, row * CellHeight, CellWidth, CellHeight);
-                }
-            }
+            await _bufferContext.FillRectAsync(cell.Column * CellWidth, cell.Row * CellHeight, CellWidth, CellHeight);
         }
 
-        await _context.EndBatchAsync();  // Execute batched drawing operations
+        // Clear all newly dead cells
+        foreach (var cell in updatedCells.Where(c => !c.IsAlive))
+        {
+            await _bufferContext.ClearRectAsync(cell.Column * CellWidth, cell.Row * CellHeight, CellWidth, CellHeight);
+        }
+
+        await _bufferContext.EndBatchAsync();
+
+        // Transfer content from buffer canvas to main canvas
+        await JSRuntime.InvokeVoidAsync("transferBufferContent");
+
+        _gameBoard.ResetIsUpdated();
 
         watch.Stop();
-        var frameTime = watch.Elapsed.TotalSeconds;  // time taken to render the frame
-        var fps = frameTime > 0 ? 1.0 / frameTime : 0;  // calculate FPS
+        var frameTime = watch.Elapsed.TotalSeconds;
+        var fps = frameTime > 0 ? 1.0 / frameTime : 0;
 
-        // Display the FPS
+        // Display the FPS on the main canvas
         await _context.SetFontAsync("16px sans-serif");
         await _context.SetFillStyleAsync("black");
         await _context.FillTextAsync($"FPS: {fps:F2}", CanvasWidth - 80, 20);
     }
+
+
 
     [JSInvokable]
     public async Task Render()
@@ -173,6 +190,8 @@
     [JSInvokable]
     public void CanvasClicked(double x, double y)
     {
+        if (IsGameRunning) return;
+
         int col = (int)x / CellWidth;
         int row = (int)y / CellHeight;
 

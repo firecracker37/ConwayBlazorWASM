@@ -2,16 +2,15 @@
 {
     public class Cell
     {
-        public int X { get; set; }  // X coordinate
-        public int Y { get; set; }  // Y coordinate
-        public bool IsAlive { get; set; }  // Current state of the cell
+        public int Row { get; }
+        public int Column { get; }
+        public bool IsAlive { get; }
 
-        public Cell(int x, int y, bool isAlive)
+        public Cell(int row, int column, bool isAlive)
         {
-            X = x;
-            Y = y;
+            Row = row;
+            Column = column;
             IsAlive = isAlive;
         }
     }
-
 }

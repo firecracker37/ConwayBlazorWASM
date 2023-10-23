@@ -4,26 +4,18 @@ namespace ConwayClient.Models
 {
     public class GameBoard
     {
-        private Stack<Cell[,]> _previousStates = new Stack<Cell[,]>();
-        public Cell[,] Cells { get; private set; }
+        private HashSet<CellPosition> _liveCells = new HashSet<CellPosition>();
         public int Rows { get; }
         public int Columns { get; }
         public bool IsRunning { get; private set; }
+        public bool IsUpdated => _updatedCells.Count > 0;
+        private List<Cell> _updatedCells = new List<Cell>();
 
         public GameBoard(int rows, int columns)
         {
             Rows = rows;
             Columns = columns;
-            Cells = new Cell[rows, columns];
             IsRunning = false;
-
-            for (int x = 0; x < rows; x++)
-            {
-                for (int y = 0; y < columns; y++)
-                {
-                    Cells[x, y] = new Cell(x, y, false);  // Initially all cells are dead
-                }
-            }
         }
 
         public void StartGame()
@@ -36,144 +28,166 @@ namespace ConwayClient.Models
             IsRunning = false;
         }
 
-        private int GetAliveNeighborsCount(Cell[,] state, int x, int y)
-        {
-            int aliveNeighbors = 0;
-            int[] dx = { -1, 0, 1, -1, 1, -1, 0, 1 };
-            int[] dy = { -1, -1, -1, 0, 0, 1, 1, 1 };
+        public List<Cell> GetUpdatedCells() => _updatedCells;
 
-            for (int i = 0; i < 8; i++)
-            {
-                int newX = x + dx[i];
-                int newY = y + dy[i];
-
-                if (newX >= 0 && newX < Rows && newY >= 0 && newY < Columns && state[newX, newY].IsAlive)
-                {
-                    aliveNeighbors++;
-                    if (aliveNeighbors == 4)  // Optimization: further counting is unnecessary
-                    {
-                        return aliveNeighbors;
-                    }
-                }
-            }
-
-            return aliveNeighbors;
-        }
-
-        public void ApplyStateChange(Action<Cell[,]> stateChangeAction)
-        {
-            // Clone the current state and push it to the stack to maintain history
-            Cell[,] currentState = CloneCurrentState();
-            _previousStates.Push(currentState);
-
-            Stopwatch stopwatch = Stopwatch.StartNew();
-
-            // Apply the state change
-            stateChangeAction(currentState);
-
-            stopwatch.Stop();
-            Console.WriteLine($"Game state updated in {stopwatch.Elapsed.TotalMilliseconds} ms");
-        }
-
-        private Cell[,] CloneCurrentState()
-        {
-            Cell[,] clone = new Cell[Rows, Columns];
-            for (int x = 0; x < Rows; x++)
-            {
-                for (int y = 0; y < Columns; y++)
-                {
-                    // Clone each cell object or just copy the state, depending on your specific needs
-                    clone[x, y] = new Cell(x, y, Cells[x, y].IsAlive);
-                }
-            }
-            return clone;
-        }
+        public void ResetIsUpdated() => _updatedCells.Clear();
 
         public void GenerateNextState()
         {
-            ApplyStateChange(currentState =>
-            {
-                Parallel.For(0, Rows, x =>
-                {
-                    for (int y = 0; y < Columns; y++)
-                    {
-                        var cell = currentState[x, y];
-                        var aliveNeighbors = GetAliveNeighborsCount(currentState, x, y);
+            var stopwatch = Stopwatch.StartNew();  // Start the stopwatch
 
-                        if (cell.IsAlive)
-                        {
-                            if (aliveNeighbors < 2 || aliveNeighbors > 3)
-                            {
-                                Cells[x, y].IsAlive = false; // Cell dies
-                            }
-                        }
-                        else
-                        {
-                            if (aliveNeighbors == 3)
-                            {
-                                Cells[x, y].IsAlive = true; // Cell becomes alive
-                            }
-                        }
-                    }
-                });
-            });
+            var newLiveCells = new HashSet<CellPosition>();
+            var neighborsToCheck = new HashSet<CellPosition>();
+            _updatedCells.Clear();
+
+            foreach (var cell in _liveCells)
+            {
+                int liveNeighbors = CountLiveNeighbors(cell);
+                neighborsToCheck.UnionWith(GetNeighbors(cell));
+
+                if (liveNeighbors == 2 || liveNeighbors == 3)
+                {
+                    newLiveCells.Add(cell);
+                }
+                else
+                {
+                    _updatedCells.Add(new Cell(cell.Row, cell.Col, false));  // Add dead cells to the updated cells list
+                }
+            }
+
+            foreach (var neighbor in neighborsToCheck)
+            {
+                if (!_liveCells.Contains(neighbor) && CountLiveNeighbors(neighbor) == 3)
+                {
+                    newLiveCells.Add(neighbor);
+                    _updatedCells.Add(new Cell(neighbor.Row, neighbor.Col, true));
+                }
+            }
+
+            _liveCells = newLiveCells;
+
+            stopwatch.Stop();  // Stop the stopwatch
+            var elapsedTime = stopwatch.Elapsed;  // Get the elapsed time
+
+            Console.WriteLine($"Time taken to generate next state: {elapsedTime.TotalMilliseconds} ms");  // Print the time to the console
         }
 
-        public Cell[,] GetPreviousState()
+
+        private int CountLiveNeighbors(CellPosition cell)
         {
-            if (_previousStates.Count > 0)
+            return GetNeighbors(cell).Count(neighbor => _liveCells.Contains(neighbor));
+        }
+
+        private IEnumerable<CellPosition> GetNeighbors(CellPosition cell)
+        {
+            var neighbors = new List<CellPosition>();
+
+            for (int row = -1; row <= 1; row++)
             {
-                return _previousStates.Pop();  // Retrieve the last stored state
+                for (int col = -1; col <= 1; col++)
+                {
+                    if (row == 0 && col == 0) continue; // skip the cell itself
+
+                    int newRow = cell.Row + row;
+                    int newCol = cell.Col + col;
+
+                    if (newRow >= 0 && newRow < Rows && newCol >= 0 && newCol < Columns)
+                    {
+                        neighbors.Add(new CellPosition(newRow, newCol));
+                    }
+                }
             }
-            else
-            {
-                // Handle the case where there are no more stored states
-                // Perhaps return the current state, or handle this situation in another appropriate way for your application
-                return Cells;
-            }
+
+            return neighbors;
+        }
+
+        public bool IsCellAlive(int row, int col)
+        {
+            return _liveCells.Contains(new CellPosition(row, col));
         }
 
         public void ResetGame()
         {
-            ApplyStateChange(currentState =>
-            {
-                Parallel.For(0, Rows, x =>
-                {
-                    for (int y = 0; y < Columns; y++)
-                    {
-                        Cells[x, y].IsAlive = false; // Reset cells in place
-                    }
-                });
-            });
+            _updatedCells.Clear();
 
-            _previousStates.Clear(); // Clear the history after resetting the game
+            foreach (var cell in _liveCells)
+            {
+                _updatedCells.Add(new Cell(cell.Row, cell.Col, false)); 
+            }
+
+            _liveCells.Clear();
         }
 
         public void RandomizeBoard()
         {
-            ApplyStateChange(currentState =>
-            {
-                Random random = new Random();
+            _updatedCells.Clear();
+            var rand = new Random();
+            var newLiveCells = new HashSet<CellPosition>();
 
-                for (int x = 0; x < Rows; x++)
+            for (int row = 0; row < Rows; row++)
+            {
+                for (int col = 0; col < Columns; col++)
                 {
-                    for (int y = 0; y < Columns; y++)
+                    bool isAlive = rand.Next(2) == 1;
+                    var cell = new CellPosition(row, col);
+
+                    if (isAlive)
                     {
-                        Cells[x, y].IsAlive = random.Next(2) == 0;
+                        newLiveCells.Add(cell);
+                    }
+
+                    if (isAlive != _liveCells.Contains(cell))  // If the state is changed
+                    {
+                        _updatedCells.Add(new Cell(row, col, isAlive));
                     }
                 }
-            });
+            }
+
+            _liveCells = newLiveCells;
         }
 
-        public void ToggleCellState(int x, int y)
+        public void ToggleCellState(int row, int col)
         {
-            ApplyStateChange(currentState =>
+            var cell = new CellPosition(row, col);
+            bool isAlive;
+
+            if (!_liveCells.Remove(cell))
             {
-                if (x >= 0 && x < Rows && y >= 0 && y < Columns)
-                {
-                    Cells[x, y].IsAlive = !Cells[x, y].IsAlive;
-                }
-            });
+                _liveCells.Add(cell);
+                isAlive = true;
+            }
+            else
+            {
+                isAlive = false;
+            }
+
+            _updatedCells.Add(new Cell(row, col, isAlive));
+        }
+    }
+
+    public struct CellPosition
+    {
+        public int Row { get; }
+        public int Col { get; }
+
+        public CellPosition(int row, int col)
+        {
+            Row = row;
+            Col = col;
+        }
+
+        public override bool Equals(object obj)
+        {
+            if (obj is CellPosition other)
+            {
+                return Row == other.Row && Col == other.Col;
+            }
+            return false;
+        }
+
+        public override int GetHashCode()
+        {
+            return HashCode.Combine(Row, Col);
         }
     }
 }
