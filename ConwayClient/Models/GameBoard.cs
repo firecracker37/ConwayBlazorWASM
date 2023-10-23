@@ -36,21 +36,23 @@ namespace ConwayClient.Models
             IsRunning = false;
         }
 
-        public int GetAliveNeighborsCount(int x, int y)
+        private int GetAliveNeighborsCount(Cell[,] state, int x, int y)
         {
             int aliveNeighbors = 0;
+            int[] dx = { -1, 0, 1, -1, 1, -1, 0, 1 };
+            int[] dy = { -1, -1, -1, 0, 0, 1, 1, 1 };
 
-            for (int i = -1; i <= 1; i++)
+            for (int i = 0; i < 8; i++)
             {
-                for (int j = -1; j <= 1; j++)
-                {
-                    if (i == 0 && j == 0) continue;  // Skip the current cell
-                    if (x + i < 0 || x + i >= Rows) continue;  // Check bounds
-                    if (y + j < 0 || y + j >= Columns) continue;  // Check bounds
+                int newX = x + dx[i];
+                int newY = y + dy[i];
 
-                    if (Cells[x + i, y + j].IsAlive)
+                if (newX >= 0 && newX < Rows && newY >= 0 && newY < Columns && state[newX, newY].IsAlive)
+                {
+                    aliveNeighbors++;
+                    if (aliveNeighbors == 4)  // Optimization: further counting is unnecessary
                     {
-                        aliveNeighbors++;
+                        return aliveNeighbors;
                     }
                 }
             }
@@ -58,37 +60,63 @@ namespace ConwayClient.Models
             return aliveNeighbors;
         }
 
-        public Cell[,] GenerateNextState()
+        public void ApplyStateChange(Action<Cell[,]> stateChangeAction)
         {
-            Cell[,] nextGameState = new Cell[Rows, Columns];
+            // Clone the current state and push it to the stack to maintain history
+            Cell[,] currentState = CloneCurrentState();
+            _previousStates.Push(currentState);
 
+            Stopwatch stopwatch = Stopwatch.StartNew();
+
+            // Apply the state change
+            stateChangeAction(currentState);
+
+            stopwatch.Stop();
+            Console.WriteLine($"Game state updated in {stopwatch.Elapsed.TotalMilliseconds} ms");
+        }
+
+        private Cell[,] CloneCurrentState()
+        {
+            Cell[,] clone = new Cell[Rows, Columns];
             for (int x = 0; x < Rows; x++)
             {
                 for (int y = 0; y < Columns; y++)
                 {
-                    var cell = Cells[x, y];
-                    var aliveNeighbors = GetAliveNeighborsCount(x, y);
-
-                    nextGameState[x, y] = new Cell(x, y, cell.IsAlive); // Copy the current state to the next state
-
-                    if (cell.IsAlive)
-                    {
-                        if (aliveNeighbors < 2 || aliveNeighbors > 3)
-                        {
-                            nextGameState[x, y].IsAlive = false; // Cell dies
-                        }
-                    }
-                    else
-                    {
-                        if (aliveNeighbors == 3)
-                        {
-                            nextGameState[x, y].IsAlive = true; // Cell becomes alive
-                        }
-                    }
+                    // Clone each cell object or just copy the state, depending on your specific needs
+                    clone[x, y] = new Cell(x, y, Cells[x, y].IsAlive);
                 }
             }
+            return clone;
+        }
 
-            return nextGameState;
+        public void GenerateNextState()
+        {
+            ApplyStateChange(currentState =>
+            {
+                Parallel.For(0, Rows, x =>
+                {
+                    for (int y = 0; y < Columns; y++)
+                    {
+                        var cell = currentState[x, y];
+                        var aliveNeighbors = GetAliveNeighborsCount(currentState, x, y);
+
+                        if (cell.IsAlive)
+                        {
+                            if (aliveNeighbors < 2 || aliveNeighbors > 3)
+                            {
+                                Cells[x, y].IsAlive = false; // Cell dies
+                            }
+                        }
+                        else
+                        {
+                            if (aliveNeighbors == 3)
+                            {
+                                Cells[x, y].IsAlive = true; // Cell becomes alive
+                            }
+                        }
+                    }
+                });
+            });
         }
 
         public Cell[,] GetPreviousState()
@@ -105,52 +133,47 @@ namespace ConwayClient.Models
             }
         }
 
-        public void UpdateGameState(Cell[,] nextState)
-        {
-            Stopwatch stopwatch = Stopwatch.StartNew();
-            _previousStates.Push(Cells);
-
-            try
-            {
-                Cells = nextState;
-            }
-            finally
-            {
-                stopwatch.Stop();
-                Console.WriteLine($"Game state updated in {stopwatch.Elapsed.TotalMilliseconds} ms");
-            }
-        }
-
         public void ResetGame()
         {
-            Cell[,] resetState = new Cell[Rows, Columns];
-
-            for (int x = 0; x < Rows; x++)
+            ApplyStateChange(currentState =>
             {
-                for (int y = 0; y < Columns; y++)
+                Parallel.For(0, Rows, x =>
                 {
-                    resetState[x, y] = new Cell(x, y, false);
-                }
-            }
+                    for (int y = 0; y < Columns; y++)
+                    {
+                        Cells[x, y].IsAlive = false; // Reset cells in place
+                    }
+                });
+            });
 
-            UpdateGameState(resetState);
-            _previousStates.Clear();
+            _previousStates.Clear(); // Clear the history after resetting the game
         }
 
         public void RandomizeBoard()
         {
-            Cell[,] randomState = new Cell[Rows, Columns];
-            Random random = new Random();
-
-            for (int x = 0; x < Rows; x++)
+            ApplyStateChange(currentState =>
             {
-                for (int y = 0; y < Columns; y++)
-                {
-                    randomState[x, y] = new Cell(x, y, random.Next(2) == 0);
-                }
-            }
+                Random random = new Random();
 
-            UpdateGameState(randomState);
+                for (int x = 0; x < Rows; x++)
+                {
+                    for (int y = 0; y < Columns; y++)
+                    {
+                        Cells[x, y].IsAlive = random.Next(2) == 0;
+                    }
+                }
+            });
+        }
+
+        public void ToggleCellState(int x, int y)
+        {
+            ApplyStateChange(currentState =>
+            {
+                if (x >= 0 && x < Rows && y >= 0 && y < Columns)
+                {
+                    Cells[x, y].IsAlive = !Cells[x, y].IsAlive;
+                }
+            });
         }
     }
 }

@@ -51,6 +51,40 @@
                 });
             }
         };
+
+        window.drawGridOnOffscreenCanvas = (offscreenCanvas, cellWidth, cellHeight, canvasWidth, canvasHeight) => {
+            const ctx = offscreenCanvas.getContext('2d');
+            ctx.strokeStyle = 'white';
+            ctx.beginPath();
+
+            // Draw vertical lines
+            for (let x = 0; x <= canvasWidth; x += cellWidth) {
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x, canvasHeight);
+            }
+
+            // Draw horizontal lines
+            for (let y = 0; y <= canvasHeight; y += cellHeight) {
+                ctx.moveTo(0, y);
+                ctx.lineTo(canvasWidth, y);
+            }
+
+            ctx.stroke();
+        };
+
+        window.transferContent = () => {
+            var canvases = document.querySelectorAll('canvas');
+            if (canvases.length < 2) {
+                console.error('Expected at least two canvas elements but found ' + canvases.length);
+                return;
+            }
+
+            var mainCanvas = canvases[0];
+            var offscreenCanvas = canvases[1];
+
+            var mainContext = mainCanvas.getContext('2d');
+            mainContext.drawImage(offscreenCanvas, 0, 0);
+        };
     </script>
 
 </body>

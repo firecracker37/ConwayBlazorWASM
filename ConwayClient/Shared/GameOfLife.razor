@@ -1,5 +1,6 @@
 ﻿@using Blazor.Extensions.Canvas.Canvas2D
 @using Blazor.Extensions;
+@using Blazor.Extensions.Canvas;
 @using ConwayClient.Models;
 @using System.Diagnostics;
 
@@ -29,12 +30,17 @@
 <div class="row">
     <div class="col s12 center-align">
         <BECanvas Width="@CanvasWidth" Height="@CanvasHeight" @ref="_canvasReference"></BECanvas>
+        <div style="visibility: hidden">
+            <BECanvas Width="@CanvasWidth" Height="@CanvasHeight" @ref="_offscreenCanvasReference"></BECanvas>
+        </div>
     </div>
 </div>
 
 @code {
     private Canvas2DContext _context;
     protected BECanvasComponent _canvasReference;
+    private Canvas2DContext _offscreenContext;
+    protected BECanvasComponent _offscreenCanvasReference;
     private GameBoard _gameBoard;
     private DotNetObjectReference<GameOfLife> _objectReference;
     private Timer _gameTimer;
@@ -44,8 +50,8 @@
 
     public bool IsGameRunning => _gameBoard?.IsRunning ?? false;
 
-    public int Rows { get; set; } = 9;
-    public int Columns { get; set; } = 16;
+    public int Rows { get; set; } = 36;
+    public int Columns { get; set; } = 64;
 
     private int CellWidth => CanvasWidth / Columns;
     private int CellHeight => CanvasHeight / Rows;
@@ -56,39 +62,78 @@
         {
             _objectReference = DotNetObjectReference.Create(this);
 
-            // Initialize the continuous rendering loop
+            _gameBoard = new GameBoard(Rows, Columns);
+            _context = await _canvasReference.CreateCanvas2DAsync();
+
+            // Initialize the offscreen canvas and draw grid lines on it
+            _offscreenContext = await _offscreenCanvasReference.CreateCanvas2DAsync();
+            await DrawGridLines(_offscreenContext, CanvasWidth, CanvasHeight, CellWidth, CellHeight);
+
+            // Start the continuous rendering loop
             await JSRuntime.InvokeVoidAsync("requestAnimationLoop", _objectReference);
 
             // Add canvas click listener
             await JSRuntime.InvokeVoidAsync("addCanvasClickListener", _objectReference);
-
-            _gameBoard = new GameBoard(Rows, Columns);
-            _context = await _canvasReference.CreateCanvas2DAsync();
         }
+    }
+
+    private async Task DrawGridLines(Canvas2DContext context, int canvasWidth, int canvasHeight, int cellWidth, int cellHeight)
+    {
+        await context.BeginBatchAsync();
+        await context.SetStrokeStyleAsync("white");
+
+        // Drawing horizontal lines
+        for (int y = 0; y <= canvasHeight; y += cellHeight)
+        {
+            await context.BeginPathAsync();
+            await context.MoveToAsync(0, y);
+            await context.LineToAsync(canvasWidth, y);
+            await context.StrokeAsync();
+        }
+
+        // Drawing vertical lines
+        for (int x = 0; x <= canvasWidth; x += cellWidth)
+        {
+            await context.BeginPathAsync();
+            await context.MoveToAsync(x, 0);
+            await context.LineToAsync(x, canvasHeight);
+            await context.StrokeAsync();
+        }
+
+        await context.EndBatchAsync();
     }
 
     private async Task DrawGameBoard()
     {
         if (_gameBoard == null) return;
+
         var watch = Stopwatch.StartNew();
 
-        var tasks = new List<Task>();
+        // Clear the main canvas with the dead cell color
+        await _context.SetFillStyleAsync("#b0bec5");
+        await _context.FillRectAsync(0, 0, CanvasWidth, CanvasHeight);
 
+        // Transfer content from offscreen canvas to main canvas
+        await JSRuntime.InvokeVoidAsync("transferContent");
+
+        await _context.BeginBatchAsync();  // Begin batched drawing operations
+
+        // Set the fill style for alive cells
+        await _context.SetFillStyleAsync("#ff8f00");
+
+        // Draw alive cells
         for (int row = 0; row < _gameBoard.Rows; row++)
         {
             for (int col = 0; col < _gameBoard.Columns; col++)
             {
-                Cell cell = _gameBoard.Cells[row, col];
-                string fillColor = cell.IsAlive ? "#ff8f00" : "#b0bec5";
-
-                tasks.Add(_context.SetFillStyleAsync(fillColor));
-                tasks.Add(_context.FillRectAsync(col * CellWidth, row * CellHeight, CellWidth, CellHeight));
-                tasks.Add(_context.SetStrokeStyleAsync("white"));
-                tasks.Add(_context.StrokeRectAsync(col * CellWidth, row * CellHeight, CellWidth, CellHeight));
+                if (_gameBoard.Cells[row, col].IsAlive)
+                {
+                    await _context.FillRectAsync(col * CellWidth, row * CellHeight, CellWidth, CellHeight);
+                }
             }
         }
 
-        await Task.WhenAll(tasks);
+        await _context.EndBatchAsync();  // Execute batched drawing operations
 
         watch.Stop();
         var frameTime = watch.Elapsed.TotalSeconds;  // time taken to render the frame
@@ -110,10 +155,9 @@
     {
         if (_gameBoard.IsRunning) return;
         _gameBoard.StartGame();
-        _gameTimer = new Timer( _ =>
+        _gameTimer = new Timer(_ =>
         {
-            var nextState = _gameBoard.GenerateNextState(); // Generate the next game state
-            _gameBoard.UpdateGameState(nextState); // Update the game state with the next state
+            _gameBoard.GenerateNextState(); // Directly generate the next game state
         }, null, 0, 500);  // Adjust the interval as needed
     }
 
@@ -126,18 +170,6 @@
         _gameBoard.PauseGame();
     }
 
-    public void ToggleCellState(int row, int col)
-    {
-        // Create a copy of the current state
-        var toggledState = (Cell[,])_gameBoard.Cells.Clone();
-
-        // Toggle the cell's state in the copied state
-        toggledState[row, col].IsAlive = !toggledState[row, col].IsAlive;
-
-        // Update the game state with the toggled state
-        _gameBoard.UpdateGameState(toggledState);
-    }
-
     [JSInvokable]
     public void CanvasClicked(double x, double y)
     {
@@ -146,7 +178,7 @@
 
         if (row >= 0 && row < Rows && col >= 0 && col < Columns)
         {
-            ToggleCellState(row, col);
+            _gameBoard.ToggleCellState(row, col);
         }
     }
 
