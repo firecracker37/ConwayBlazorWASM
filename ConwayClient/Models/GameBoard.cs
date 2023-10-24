@@ -1,29 +1,22 @@
-﻿using System.Diagnostics;
+﻿using System.Collections.Concurrent;
+using System.Diagnostics;
 
 namespace ConwayClient.Models
 {
     public class GameBoard
     {
-        private Stack<Cell[,]> _previousStates = new Stack<Cell[,]>();
-        public Cell[,] Cells { get; private set; }
+        private HashSet<CellPosition> _liveCells = new HashSet<CellPosition>();
         public int Rows { get; }
         public int Columns { get; }
         public bool IsRunning { get; private set; }
+        public bool IsUpdated => _updatedCells.Count > 0;
+        private List<Cell> _updatedCells = new List<Cell>();
 
         public GameBoard(int rows, int columns)
         {
             Rows = rows;
             Columns = columns;
-            Cells = new Cell[rows, columns];
             IsRunning = false;
-
-            for (int x = 0; x < rows; x++)
-            {
-                for (int y = 0; y < columns; y++)
-                {
-                    Cells[x, y] = new Cell(x, y, false);  // Initially all cells are dead
-                }
-            }
         }
 
         public void StartGame()
@@ -36,121 +29,190 @@ namespace ConwayClient.Models
             IsRunning = false;
         }
 
-        public int GetAliveNeighborsCount(int x, int y)
+        public List<Cell> GetUpdatedCells() => _updatedCells;
+
+        public void ResetIsUpdated() => _updatedCells.Clear();
+
+        public void GenerateNextState()
         {
-            int aliveNeighbors = 0;
+            var totalStopwatch = Stopwatch.StartNew();
 
-            for (int i = -1; i <= 1; i++)
+            var liveCellsStopwatch = Stopwatch.StartNew();
+
+            var newLiveCells = new HashSet<CellPosition>();
+            _updatedCells.Clear();
+
+            foreach (var cell in _liveCells)
             {
-                for (int j = -1; j <= 1; j++)
-                {
-                    if (i == 0 && j == 0) continue;  // Skip the current cell
-                    if (x + i < 0 || x + i >= Rows) continue;  // Check bounds
-                    if (y + j < 0 || y + j >= Columns) continue;  // Check bounds
+                int liveNeighbors = CountLiveNeighbors(cell);
 
-                    if (Cells[x + i, y + j].IsAlive)
+                if (liveNeighbors == 2 || liveNeighbors == 3)
+                {
+                    newLiveCells.Add(cell);
+                }
+                else
+                {
+                    _updatedCells.Add(new Cell(cell.Row, cell.Col, false));
+                }
+            }
+
+            liveCellsStopwatch.Stop();
+
+            var neighborsStopwatch = Stopwatch.StartNew();
+
+            var cellsToCheck = _liveCells.SelectMany(cell => GetNeighbors(cell)).Distinct().ToList();
+            cellsToCheck.AddRange(_liveCells);
+
+            foreach (var cell in cellsToCheck)
+            {
+                if (!_liveCells.Contains(cell) && CountLiveNeighbors(cell) == 3)
+                {
+                    newLiveCells.Add(cell);
+                    _updatedCells.Add(new Cell(cell.Row, cell.Col, true));
+                }
+            }
+
+            neighborsStopwatch.Stop();
+
+            _liveCells = newLiveCells;
+
+            totalStopwatch.Stop();
+
+            Console.WriteLine($"Time taken for live cells processing: {liveCellsStopwatch.Elapsed.TotalMilliseconds} ms");
+            Console.WriteLine($"Time taken for neighbors processing: {neighborsStopwatch.Elapsed.TotalMilliseconds} ms");
+            Console.WriteLine($"Total time taken: {totalStopwatch.Elapsed.TotalMilliseconds} ms");
+        }
+
+        private int CountLiveNeighbors(CellPosition cell)
+        {
+            int count = 0;
+
+            for (int row = -1; row <= 1; row++)
+            {
+                for (int col = -1; col <= 1; col++)
+                {
+                    if (row == 0 && col == 0) continue;
+
+                    int newRow = cell.Row + row;
+                    int newCol = cell.Col + col;
+
+                    if (newRow >= 0 && newRow < Rows && newCol >= 0 && newCol < Columns &&
+                        _liveCells.Contains(new CellPosition(newRow, newCol)))
                     {
-                        aliveNeighbors++;
+                        count++;
                     }
                 }
             }
 
-            return aliveNeighbors;
+            return count;
         }
 
-        public Cell[,] GenerateNextState()
+        private IEnumerable<CellPosition> GetNeighbors(CellPosition cell)
         {
-            Cell[,] nextGameState = new Cell[Rows, Columns];
-
-            for (int x = 0; x < Rows; x++)
+            for (int row = -1; row <= 1; row++)
             {
-                for (int y = 0; y < Columns; y++)
+                for (int col = -1; col <= 1; col++)
                 {
-                    var cell = Cells[x, y];
-                    var aliveNeighbors = GetAliveNeighborsCount(x, y);
+                    if (row == 0 && col == 0) continue;  // skip the cell itself
 
-                    nextGameState[x, y] = new Cell(x, y, cell.IsAlive); // Copy the current state to the next state
+                    int newRow = cell.Row + row;
+                    int newCol = cell.Col + col;
 
-                    if (cell.IsAlive)
+                    if (newRow >= 0 && newRow < Rows && newCol >= 0 && newCol < Columns)
                     {
-                        if (aliveNeighbors < 2 || aliveNeighbors > 3)
-                        {
-                            nextGameState[x, y].IsAlive = false; // Cell dies
-                        }
-                    }
-                    else
-                    {
-                        if (aliveNeighbors == 3)
-                        {
-                            nextGameState[x, y].IsAlive = true; // Cell becomes alive
-                        }
+                        yield return new CellPosition(newRow, newCol);
                     }
                 }
             }
-
-            return nextGameState;
         }
 
-        public Cell[,] GetPreviousState()
+        public bool IsCellAlive(int row, int col)
         {
-            if (_previousStates.Count > 0)
-            {
-                return _previousStates.Pop();  // Retrieve the last stored state
-            }
-            else
-            {
-                // Handle the case where there are no more stored states
-                // Perhaps return the current state, or handle this situation in another appropriate way for your application
-                return Cells;
-            }
-        }
-
-        public void UpdateGameState(Cell[,] nextState)
-        {
-            Stopwatch stopwatch = Stopwatch.StartNew();
-            _previousStates.Push(Cells);
-
-            try
-            {
-                Cells = nextState;
-            }
-            finally
-            {
-                stopwatch.Stop();
-                Console.WriteLine($"Game state updated in {stopwatch.Elapsed.TotalMilliseconds} ms");
-            }
+            return _liveCells.Contains(new CellPosition(row, col));
         }
 
         public void ResetGame()
         {
-            Cell[,] resetState = new Cell[Rows, Columns];
+            _updatedCells.Clear();
 
-            for (int x = 0; x < Rows; x++)
+            foreach (var cell in _liveCells)
             {
-                for (int y = 0; y < Columns; y++)
-                {
-                    resetState[x, y] = new Cell(x, y, false);
-                }
+                _updatedCells.Add(new Cell(cell.Row, cell.Col, false)); 
             }
 
-            UpdateGameState(resetState);
-            _previousStates.Clear();
+            _liveCells.Clear();
         }
 
         public void RandomizeBoard()
         {
-            Cell[,] randomState = new Cell[Rows, Columns];
-            Random random = new Random();
+            _updatedCells.Clear();
+            var rand = new Random();
+            var newLiveCells = new HashSet<CellPosition>();
 
-            for (int x = 0; x < Rows; x++)
+            for (int row = 0; row < Rows; row++)
             {
-                for (int y = 0; y < Columns; y++)
+                for (int col = 0; col < Columns; col++)
                 {
-                    randomState[x, y] = new Cell(x, y, random.Next(2) == 0);
+                    bool isAlive = rand.Next(100) < 20;  // 20% chance for a cell to be alive
+                    var cell = new CellPosition(row, col);
+
+                    if (isAlive)
+                    {
+                        newLiveCells.Add(cell);
+                    }
+
+                    if (isAlive != _liveCells.Contains(cell))  // If the state is changed
+                    {
+                        _updatedCells.Add(new Cell(row, col, isAlive));
+                    }
                 }
             }
 
-            UpdateGameState(randomState);
+            _liveCells = newLiveCells;
+        }
+
+        public void ToggleCellState(int row, int col)
+        {
+            var cell = new CellPosition(row, col);
+            bool isAlive;
+
+            if (!_liveCells.Remove(cell))
+            {
+                _liveCells.Add(cell);
+                isAlive = true;
+            }
+            else
+            {
+                isAlive = false;
+            }
+
+            _updatedCells.Add(new Cell(row, col, isAlive));
+        }
+    }
+
+    public struct CellPosition
+    {
+        public int Row { get; }
+        public int Col { get; }
+
+        public CellPosition(int row, int col)
+        {
+            Row = row;
+            Col = col;
+        }
+
+        public override bool Equals(object obj)
+        {
+            if (obj is CellPosition other)
+            {
+                return Row == other.Row && Col == other.Col;
+            }
+            return false;
+        }
+
+        public override int GetHashCode()
+        {
+            return HashCode.Combine(Row, Col);
         }
     }
 }

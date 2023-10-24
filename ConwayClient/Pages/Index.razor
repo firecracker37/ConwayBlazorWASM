@@ -2,58 +2,10 @@
 
 <div class="row">
     <div class="col s12">
-        <div class="card-panel blue-grey darken-3">
-            <div class="row">
-                <div class="col s3 center-align">
-                    <button @onclick="StartGame" class="btn" disabled="@isGameRunning">Start</button>
-                </div>
-                <div class="col s3 center-align">
-                    <button @onclick="PauseGame" class="btn" disabled="@( ! isGameRunning)">Pause</button>
-                </div>
-
-                <div class="col s3 center-align">
-                    <buton @onclick="ResetGame" class="btn" disabled="@isGameRunning">Reset</buton>
-                </div>
-                <div class="col s3 center-align">
-                    <buton @onclick="RandomizeBoard" class="btn" disabled="@isGameRunning">Randomize</buton>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<div class="row">
-    <div class="col s12">
-        <GameOfLife OnGameStateChanged="HandleGameStateChanged" @ref="_gameOfLife" />
+        <GameOfLife />
     </div>
 </div>
 
 @code {
-    private bool isGameRunning;
-
-    private GameOfLife _gameOfLife;
-
-    private void HandleGameStateChanged(bool isRunning)
-    {
-        isGameRunning = isRunning;
-    }
-
-    private async Task StartGame()
-    {
-        await _gameOfLife.StartGame();
-    }
-
-    private async Task PauseGame()
-    {
-        await _gameOfLife.PauseGame();
-    }
-
-    private void ResetGame()
-    {
-        _gameOfLife.ResetGame();
-    }
-    private void RandomizeBoard()
-    {
-        _gameOfLife.RandomizeBoard();
-    }
+    
 }
