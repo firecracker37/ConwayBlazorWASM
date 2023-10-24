@@ -30,7 +30,7 @@
 <div class="row">
     <div class="col s12 center-align">
         <BECanvas Width="@CanvasWidth" Height="@CanvasHeight" @ref="_canvasReference"></BECanvas>
-        <div style="visibility: hidden">
+        <div style="display: none;">
             <BECanvas Width="@CanvasWidth" Height="@CanvasHeight" @ref="_offscreenCanvasReference"></BECanvas>
             <BECanvas Width="@CanvasWidth" Height="@CanvasHeight" @ref="_bufferCanvasReference"></BECanvas>
         </div>
@@ -48,18 +48,22 @@
     private DotNetObjectReference<GameOfLife> _objectReference;
     private Timer _gameTimer;
 
-    private const int CanvasWidth = 960;
-    private const int CanvasHeight = 540;
+    private const int CanvasWidth = 768;
+    private const int CanvasHeight = 768;
 
     public bool IsGameRunning => _gameBoard?.IsRunning ?? false;
 
-    public int Rows { get; set; } = 36;
-    public int Columns { get; set; } = 64;
+    public int Rows { get; set; } = 128;
+    public int Columns { get; set; } = 128;
 
     private int CellWidth => CanvasWidth / Columns;
     private int CellHeight => CanvasHeight / Rows;
 
     private List<Cell> _updatedCells = new List<Cell>();
+
+    private DateTime _lastFrameTime;
+    private const double DesiredFrameTime = 1.0 / 144.0;  // For 144 FPS
+
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -115,6 +119,9 @@
     private async Task DrawGameBoard()
     {
         if (_gameBoard == null) return;
+        var currentTime = DateTime.UtcNow;
+        var timeSinceLastFrame = (currentTime - _lastFrameTime).TotalSeconds;
+        if (timeSinceLastFrame < DesiredFrameTime) return;
 
         var watch = Stopwatch.StartNew();
 
@@ -151,13 +158,14 @@
         _gameBoard.ResetIsUpdated();
 
         watch.Stop();
-        var frameTime = watch.Elapsed.TotalSeconds;
-        var fps = frameTime > 0 ? 1.0 / frameTime : 0;
+        var timeSinceLastDraw = (currentTime - _lastFrameTime).TotalSeconds;
+        var fps = timeSinceLastDraw > 0 ? 1.0 / timeSinceLastDraw : 0;
 
         // Display the FPS on the main canvas
         await _context.SetFontAsync("16px sans-serif");
         await _context.SetFillStyleAsync("black");
         await _context.FillTextAsync($"FPS: {fps:F2}", CanvasWidth - 80, 20);
+        _lastFrameTime = currentTime;
     }
 
 

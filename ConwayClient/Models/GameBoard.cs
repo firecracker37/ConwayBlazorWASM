@@ -1,4 +1,5 @@
-﻿using System.Diagnostics;
+﻿using System.Collections.Concurrent;
+using System.Diagnostics;
 
 namespace ConwayClient.Models
 {
@@ -34,16 +35,16 @@ namespace ConwayClient.Models
 
         public void GenerateNextState()
         {
-            var stopwatch = Stopwatch.StartNew();  // Start the stopwatch
+            var totalStopwatch = Stopwatch.StartNew();
+
+            var liveCellsStopwatch = Stopwatch.StartNew();
 
             var newLiveCells = new HashSet<CellPosition>();
-            var neighborsToCheck = new HashSet<CellPosition>();
             _updatedCells.Clear();
 
             foreach (var cell in _liveCells)
             {
                 int liveNeighbors = CountLiveNeighbors(cell);
-                neighborsToCheck.UnionWith(GetNeighbors(cell));
 
                 if (liveNeighbors == 2 || liveNeighbors == 3)
                 {
@@ -51,54 +52,78 @@ namespace ConwayClient.Models
                 }
                 else
                 {
-                    _updatedCells.Add(new Cell(cell.Row, cell.Col, false));  // Add dead cells to the updated cells list
+                    _updatedCells.Add(new Cell(cell.Row, cell.Col, false));
                 }
             }
 
-            foreach (var neighbor in neighborsToCheck)
+            liveCellsStopwatch.Stop();
+
+            var neighborsStopwatch = Stopwatch.StartNew();
+
+            var cellsToCheck = _liveCells.SelectMany(cell => GetNeighbors(cell)).Distinct().ToList();
+            cellsToCheck.AddRange(_liveCells);
+
+            foreach (var cell in cellsToCheck)
             {
-                if (!_liveCells.Contains(neighbor) && CountLiveNeighbors(neighbor) == 3)
+                if (!_liveCells.Contains(cell) && CountLiveNeighbors(cell) == 3)
                 {
-                    newLiveCells.Add(neighbor);
-                    _updatedCells.Add(new Cell(neighbor.Row, neighbor.Col, true));
+                    newLiveCells.Add(cell);
+                    _updatedCells.Add(new Cell(cell.Row, cell.Col, true));
                 }
             }
+
+            neighborsStopwatch.Stop();
 
             _liveCells = newLiveCells;
 
-            stopwatch.Stop();  // Stop the stopwatch
-            var elapsedTime = stopwatch.Elapsed;  // Get the elapsed time
+            totalStopwatch.Stop();
 
-            Console.WriteLine($"Time taken to generate next state: {elapsedTime.TotalMilliseconds} ms");  // Print the time to the console
+            Console.WriteLine($"Time taken for live cells processing: {liveCellsStopwatch.Elapsed.TotalMilliseconds} ms");
+            Console.WriteLine($"Time taken for neighbors processing: {neighborsStopwatch.Elapsed.TotalMilliseconds} ms");
+            Console.WriteLine($"Total time taken: {totalStopwatch.Elapsed.TotalMilliseconds} ms");
         }
-
 
         private int CountLiveNeighbors(CellPosition cell)
         {
-            return GetNeighbors(cell).Count(neighbor => _liveCells.Contains(neighbor));
-        }
-
-        private IEnumerable<CellPosition> GetNeighbors(CellPosition cell)
-        {
-            var neighbors = new List<CellPosition>();
+            int count = 0;
 
             for (int row = -1; row <= 1; row++)
             {
                 for (int col = -1; col <= 1; col++)
                 {
-                    if (row == 0 && col == 0) continue; // skip the cell itself
+                    if (row == 0 && col == 0) continue;
+
+                    int newRow = cell.Row + row;
+                    int newCol = cell.Col + col;
+
+                    if (newRow >= 0 && newRow < Rows && newCol >= 0 && newCol < Columns &&
+                        _liveCells.Contains(new CellPosition(newRow, newCol)))
+                    {
+                        count++;
+                    }
+                }
+            }
+
+            return count;
+        }
+
+        private IEnumerable<CellPosition> GetNeighbors(CellPosition cell)
+        {
+            for (int row = -1; row <= 1; row++)
+            {
+                for (int col = -1; col <= 1; col++)
+                {
+                    if (row == 0 && col == 0) continue;  // skip the cell itself
 
                     int newRow = cell.Row + row;
                     int newCol = cell.Col + col;
 
                     if (newRow >= 0 && newRow < Rows && newCol >= 0 && newCol < Columns)
                     {
-                        neighbors.Add(new CellPosition(newRow, newCol));
+                        yield return new CellPosition(newRow, newCol);
                     }
                 }
             }
-
-            return neighbors;
         }
 
         public bool IsCellAlive(int row, int col)
@@ -128,7 +153,7 @@ namespace ConwayClient.Models
             {
                 for (int col = 0; col < Columns; col++)
                 {
-                    bool isAlive = rand.Next(2) == 1;
+                    bool isAlive = rand.Next(100) < 20;  // 20% chance for a cell to be alive
                     var cell = new CellPosition(row, col);
 
                     if (isAlive)
