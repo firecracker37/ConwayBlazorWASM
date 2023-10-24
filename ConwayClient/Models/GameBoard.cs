@@ -12,6 +12,8 @@ namespace ConwayClient.Models
         private CellPool _cellPool = new CellPool();
         private Dictionary<CellPosition, int> _neighborCounts = new Dictionary<CellPosition, int>();
         private HashSet<CellPosition> _newLiveCells = new HashSet<CellPosition>();
+        private List<List<Cell>> _history = new List<List<Cell>>();
+        private const int MAX_HISTORY_SIZE = 100;
 
         public GameBoard(int rows, int columns)
         {
@@ -82,6 +84,13 @@ namespace ConwayClient.Models
                 }
             }
 
+            if (_updatedCells.Any())
+            {
+                _history.Add(new List<Cell>(_updatedCells));
+                if (_history.Count > MAX_HISTORY_SIZE)
+                    _history.RemoveAt(0);
+            }
+
             // Swap _liveCells and _newLiveCells
             var temp = _liveCells;
             _liveCells = _newLiveCells;
@@ -90,6 +99,53 @@ namespace ConwayClient.Models
             totalStopwatch.Stop();
 
             Console.WriteLine($"Total time taken: {totalStopwatch.Elapsed.TotalMilliseconds} ms");
+        }
+
+        public void UndoLastState()
+        {
+            if (!_history.Any()) return;
+
+            var lastChanges = _history.Last();
+            _history.RemoveAt(_history.Count - 1);
+
+            foreach (var cell in lastChanges)
+            {
+                if (cell.IsAlive)
+                {
+                    _liveCells.Remove(new CellPosition(cell.Row, cell.Column));
+                }
+                else
+                {
+                    _liveCells.Add(new CellPosition(cell.Row, cell.Column));
+                }
+                _updatedCells.Add(new Cell(cell.Row, cell.Column, !cell.IsAlive));
+            }
+        }
+
+        public bool CanUndo()
+        {
+            return _history.Count > 0;
+        }
+
+        public bool GetCellState(int row, int col)
+        {
+            return _liveCells.Contains(new CellPosition(row, col));
+        }
+
+        public void SetCellState(int row, int col, bool isAlive)
+        {
+            var cell = new CellPosition(row, col);
+
+            if (isAlive)
+            {
+                _liveCells.Add(cell);
+            }
+            else
+            {
+                _liveCells.Remove(cell);
+            }
+
+            _updatedCells.Add(new Cell(row, col, isAlive));
         }
 
         private IEnumerable<CellPosition> GetNeighbors(CellPosition cell)
