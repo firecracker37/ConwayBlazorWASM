@@ -10,18 +10,24 @@
     <div class="col s12">
         <div class="card-panel blue-grey darken-3">
             <div class="row">
-                <div class="col s3 center-align">
+                <div class="col s2 center-align">
                     <button @onclick="StartGame" class="btn" disabled="@IsGameRunning">Start</button>
                 </div>
-                <div class="col s3 center-align">
+                <div class="col s2 center-align">
                     <button @onclick="PauseGame" class="btn" disabled="@( ! IsGameRunning)">Pause</button>
                 </div>
 
-                <div class="col s3 center-align">
+                <div class="col s2 center-align">
                     <buton @onclick="ResetGame" class="btn" disabled="@IsGameRunning">Reset</buton>
                 </div>
-                <div class="col s3 center-align">
+                <div class="col s2 center-align">
                     <buton @onclick="RandomizeBoard" class="btn" disabled="@IsGameRunning">Randomize</buton>
+                </div>
+                <div class="col s2 center-align">
+                    <button @onclick="Undo" class="btn" disabled="@ShouldDisableUndoButton()">Undo</button>
+                </div>
+                <div class="col s2 center-align">
+                    <button class="btn" disabled="true">Btn</button>
                 </div>
             </div>
         </div>
@@ -197,6 +203,22 @@
         _gameTimer = null;
 
         _isGameRunning = false;
+    }
+
+    public void Undo()
+    {
+        if (!IsGameRunning && _gameBoard.CanUndo())
+        {
+            _gameBoard.UndoLastState();
+        }
+    }
+
+    private bool ShouldDisableUndoButton()
+    {
+        if (_gameBoard == null)
+            return true;
+
+        return IsGameRunning || !_gameBoard.CanUndo();
     }
 
     [JSInvokable]
