@@ -51,7 +51,8 @@
     private const int CanvasWidth = 768;
     private const int CanvasHeight = 768;
 
-    public bool IsGameRunning => _gameBoard?.IsRunning ?? false;
+    private bool _isGameRunning = false;
+    public bool IsGameRunning => _isGameRunning;
 
     public int Rows { get; set; } = 128;
     public int Columns { get; set; } = 128;
@@ -178,21 +179,24 @@
 
     public void StartGame()
     {
-        if (_gameBoard.IsRunning) return;
-        _gameBoard.StartGame();
+        if (_isGameRunning) return;
+
         _gameTimer = new Timer(_ =>
         {
             _gameBoard.GenerateNextState(); // Directly generate the next game state
         }, null, 0, 500);  // Adjust the interval as needed
+
+        _isGameRunning = true;
     }
 
     public void PauseGame()
     {
-        if (!_gameBoard.IsRunning) return;
+        if (!_isGameRunning) return;
 
         _gameTimer?.Dispose();
         _gameTimer = null;
-        _gameBoard.PauseGame();
+
+        _isGameRunning = false;
     }
 
     [JSInvokable]
