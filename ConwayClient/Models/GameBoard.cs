@@ -1,5 +1,4 @@
-﻿using System.Collections.Concurrent;
-using System.Diagnostics;
+﻿using System.Diagnostics;
 
 namespace ConwayClient.Models
 {
@@ -8,7 +7,6 @@ namespace ConwayClient.Models
         private HashSet<CellPosition> _liveCells = new HashSet<CellPosition>();
         public int Rows { get; }
         public int Columns { get; }
-        public bool IsRunning { get; private set; }
         public bool IsUpdated => _updatedCells.Count > 0;
         private List<Cell> _updatedCells = new List<Cell>();
         private CellPool _cellPool = new CellPool();
@@ -19,17 +17,6 @@ namespace ConwayClient.Models
         {
             Rows = rows;
             Columns = columns;
-            IsRunning = false;
-        }
-
-        public void StartGame()
-        {
-            IsRunning = true;
-        }
-
-        public void PauseGame()
-        {
-            IsRunning = false;
         }
 
         public List<Cell> GetUpdatedCells() => _updatedCells;
@@ -107,26 +94,20 @@ namespace ConwayClient.Models
 
         private IEnumerable<CellPosition> GetNeighbors(CellPosition cell)
         {
-            for (int row = -1; row <= 1; row++)
+            // Relative positions of the 8 neighbors
+            int[] rowOffsets = { -1, -1, -1, 0, 0, 1, 1, 1 };
+            int[] colOffsets = { -1, 0, 1, -1, 1, -1, 0, 1 };
+
+            for (int i = 0; i < 8; i++)
             {
-                for (int col = -1; col <= 1; col++)
+                int newRow = cell.Row + rowOffsets[i];
+                int newCol = cell.Col + colOffsets[i];
+
+                if (newRow >= 0 && newRow < Rows && newCol >= 0 && newCol < Columns)
                 {
-                    if (row == 0 && col == 0) continue;  // skip the cell itself
-
-                    int newRow = cell.Row + row;
-                    int newCol = cell.Col + col;
-
-                    if (newRow >= 0 && newRow < Rows && newCol >= 0 && newCol < Columns)
-                    {
-                        yield return new CellPosition(newRow, newCol);
-                    }
+                    yield return new CellPosition(newRow, newCol);
                 }
             }
-        }
-
-        public bool IsCellAlive(int row, int col)
-        {
-            return _liveCells.Contains(new CellPosition(row, col));
         }
 
         public void ResetGame()
@@ -217,10 +198,11 @@ namespace ConwayClient.Models
     public class CellPool
     {
         private Stack<CellPosition> pool = new Stack<CellPosition>();
-        private const int InitialSize = 1000;  // Adjust as needed
+        private const int InitialSize = 4000;  // Adjust as needed
 
         public CellPool()
         {
+            Console.WriteLine("Creating New Object Pool");
             for (int i = 0; i < InitialSize; i++)
             {
                 pool.Push(new CellPosition(-1, -1));
@@ -233,6 +215,7 @@ namespace ConwayClient.Models
             {
                 return pool.Pop();
             }
+            Console.WriteLine("Object pool exhausted, creating new CellPosition");
             return new CellPosition(-1, -1);  // Create new if pool is empty
         }
 
