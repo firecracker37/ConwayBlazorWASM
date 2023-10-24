@@ -127,6 +127,27 @@ namespace ConwayClient.Models
             return _history.Count > 0;
         }
 
+        public bool GetCellState(int row, int col)
+        {
+            return _liveCells.Contains(new CellPosition(row, col));
+        }
+
+        public void SetCellState(int row, int col, bool isAlive)
+        {
+            var cell = new CellPosition(row, col);
+
+            if (isAlive)
+            {
+                _liveCells.Add(cell);
+            }
+            else
+            {
+                _liveCells.Remove(cell);
+            }
+
+            _updatedCells.Add(new Cell(row, col, isAlive));
+        }
+
         private IEnumerable<CellPosition> GetNeighbors(CellPosition cell)
         {
             // Relative positions of the 8 neighbors
