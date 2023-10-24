@@ -11,6 +11,9 @@ namespace ConwayClient.Models
         public bool IsRunning { get; private set; }
         public bool IsUpdated => _updatedCells.Count > 0;
         private List<Cell> _updatedCells = new List<Cell>();
+        private CellPool _cellPool = new CellPool();
+        private Dictionary<CellPosition, int> _neighborCounts = new Dictionary<CellPosition, int>();
+        private HashSet<CellPosition> _newLiveCells = new HashSet<CellPosition>();
 
         public GameBoard(int rows, int columns)
         {
@@ -37,74 +40,69 @@ namespace ConwayClient.Models
         {
             var totalStopwatch = Stopwatch.StartNew();
 
-            var liveCellsStopwatch = Stopwatch.StartNew();
+            // Clear the dictionary for reuse
+            _neighborCounts.Clear();
 
-            var newLiveCells = new HashSet<CellPosition>();
-            _updatedCells.Clear();
+            // Clear the HashSet for reuse
+            _newLiveCells.Clear();
 
+            // Efficiently count neighbors using the dictionary
             foreach (var cell in _liveCells)
             {
-                int liveNeighbors = CountLiveNeighbors(cell);
-
-                if (liveNeighbors == 2 || liveNeighbors == 3)
+                foreach (var neighbor in GetNeighbors(cell))
                 {
-                    newLiveCells.Add(cell);
-                }
-                else
-                {
-                    _updatedCells.Add(new Cell(cell.Row, cell.Col, false));
-                }
-            }
-
-            liveCellsStopwatch.Stop();
-
-            var neighborsStopwatch = Stopwatch.StartNew();
-
-            var cellsToCheck = _liveCells.SelectMany(cell => GetNeighbors(cell)).Distinct().ToList();
-            cellsToCheck.AddRange(_liveCells);
-
-            foreach (var cell in cellsToCheck)
-            {
-                if (!_liveCells.Contains(cell) && CountLiveNeighbors(cell) == 3)
-                {
-                    newLiveCells.Add(cell);
-                    _updatedCells.Add(new Cell(cell.Row, cell.Col, true));
-                }
-            }
-
-            neighborsStopwatch.Stop();
-
-            _liveCells = newLiveCells;
-
-            totalStopwatch.Stop();
-
-            Console.WriteLine($"Time taken for live cells processing: {liveCellsStopwatch.Elapsed.TotalMilliseconds} ms");
-            Console.WriteLine($"Time taken for neighbors processing: {neighborsStopwatch.Elapsed.TotalMilliseconds} ms");
-            Console.WriteLine($"Total time taken: {totalStopwatch.Elapsed.TotalMilliseconds} ms");
-        }
-
-        private int CountLiveNeighbors(CellPosition cell)
-        {
-            int count = 0;
-
-            for (int row = -1; row <= 1; row++)
-            {
-                for (int col = -1; col <= 1; col++)
-                {
-                    if (row == 0 && col == 0) continue;
-
-                    int newRow = cell.Row + row;
-                    int newCol = cell.Col + col;
-
-                    if (newRow >= 0 && newRow < Rows && newCol >= 0 && newCol < Columns &&
-                        _liveCells.Contains(new CellPosition(newRow, newCol)))
+                    if (_neighborCounts.ContainsKey(neighbor))
                     {
-                        count++;
+                        _neighborCounts[neighbor]++;
+                    }
+                    else
+                    {
+                        _neighborCounts[neighbor] = 1;
                     }
                 }
             }
 
-            return count;
+            // Explicitly process each live cell
+            foreach (var cell in _liveCells)
+            {
+                var count = _neighborCounts.ContainsKey(cell) ? _neighborCounts[cell] : 0;
+
+                if (count == 2 || count == 3)
+                {
+                    _newLiveCells.Add(cell);
+                }
+                else
+                {
+                    _updatedCells.Add(new Cell(cell.Row, cell.Col, false));
+                    _cellPool.Release(cell);
+                }
+            }
+
+            // Process potential new live cells (cells that were dead but have 3 neighbors)
+            foreach (var entry in _neighborCounts)
+            {
+                var cell = entry.Key;
+                var count = entry.Value;
+
+                if (!_liveCells.Contains(cell) && count == 3)
+                {
+                    _newLiveCells.Add(cell);
+                    _updatedCells.Add(new Cell(cell.Row, cell.Col, true));
+                }
+                else
+                {
+                    _cellPool.Release(cell);
+                }
+            }
+
+            // Swap _liveCells and _newLiveCells
+            var temp = _liveCells;
+            _liveCells = _newLiveCells;
+            _newLiveCells = temp;
+
+            totalStopwatch.Stop();
+
+            Console.WriteLine($"Total time taken: {totalStopwatch.Elapsed.TotalMilliseconds} ms");
         }
 
         private IEnumerable<CellPosition> GetNeighbors(CellPosition cell)
@@ -213,6 +211,34 @@ namespace ConwayClient.Models
         public override int GetHashCode()
         {
             return HashCode.Combine(Row, Col);
+        }
+    }
+
+    public class CellPool
+    {
+        private Stack<CellPosition> pool = new Stack<CellPosition>();
+        private const int InitialSize = 1000;  // Adjust as needed
+
+        public CellPool()
+        {
+            for (int i = 0; i < InitialSize; i++)
+            {
+                pool.Push(new CellPosition(-1, -1));
+            }
+        }
+
+        public CellPosition Acquire()
+        {
+            if (pool.Count > 0)
+            {
+                return pool.Pop();
+            }
+            return new CellPosition(-1, -1);  // Create new if pool is empty
+        }
+
+        public void Release(CellPosition cell)
+        {
+            pool.Push(cell);
         }
     }
 }
