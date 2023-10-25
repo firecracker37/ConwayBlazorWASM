@@ -169,7 +169,7 @@
     private async Task DrawGridLines(Canvas2DContext context, int canvasWidth, int canvasHeight, int cellWidth, int cellHeight)
     {
         await context.BeginBatchAsync();
-        await context.SetStrokeStyleAsync("white");
+        await context.SetStrokeStyleAsync("#bdbdbd");
 
         // Drawing horizontal lines
         for (int y = 0; y <= canvasHeight; y += cellHeight)
@@ -243,8 +243,6 @@
         await _context.FillTextAsync($"FPS: {fps:F2}", CanvasWidth - 80, 20);
         _lastFrameTime = currentTime;
     }
-
-
 
     [JSInvokable]
     public async Task Render()
