@@ -6,20 +6,22 @@
     <title>Conway's Game of Life</title>
     <base href="/" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
     <link href="/css/app.css" rel="stylesheet" />
 
     <link href="ConwayClient.styles.css" rel="stylesheet" />
 </head>
 
-<body>
+<body class="grey darken-4">
     <div id="app">
-        <div id="loading-container">
-            <div>
-                <h1>Conway's Game of Life</h1>
-                <div id="loading-square"></div>
-                <h3>Loading...</h3>
+        <div class="flex-container grey darken-4">
+            <div class="content center-align">
+                <h1 class="indigo-text text-lighten-3">Conway's Game of Life</h1>
+                <div class="loading-cell"></div>
+                <h4 class="deep-purple-text accent-2">Loading...</h4>
             </div>
         </div>
+
     </div>
 
     <div id="blazor-error-ui">
@@ -54,7 +56,7 @@
 
         window.drawGridOnOffscreenCanvas = (offscreenCanvas, cellWidth, cellHeight, canvasWidth, canvasHeight) => {
             const ctx = offscreenCanvas.getContext('2d');
-            ctx.strokeStyle = 'white';
+            ctx.strokeStyle = '#bdbdbd';
             ctx.beginPath();
 
             // Draw vertical lines
@@ -106,6 +108,22 @@
             // Transfer game state from buffer canvas
             mainContext.drawImage(bufferCanvas, 0, 0);
         };
+        function togglePlayPauseIcon(isGameRunning) {
+            var iconElement = document.getElementById('playPauseIcon');
+            if (isGameRunning) {
+                iconElement.innerText = 'pause';
+            } else {
+                iconElement.innerText = 'play_arrow';
+            }
+        };
+
+        function resizeAllMaterializeTextareas() {
+            var textareas = document.querySelectorAll('textarea.materialize-textarea');
+            for (var i = 0; i < textareas.length; i++) {
+                M.textareaAutoResize(textareas[i]);
+            }
+        };
+
     </script>
 
 </body>
