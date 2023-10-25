@@ -8,51 +8,106 @@
 
 @inject IJSRuntime JSRuntime
 
-<div class="row">
-    <div class="col s12">
-        <div class="card-panel blue-grey darken-3">
-            <div class="row">
-                <div class="col s2 center-align">
-                    <button @onclick="StartGame" class="btn" disabled="@IsGameRunning">Start</button>
+<!-- Row for the entire layout -->
+<div class="row grey darken-3">
+
+    <!-- Left column for the configuration panel -->
+    <div class="col s12 m4">
+        <div class="card grey darken-4">
+            <div class="card-content white-text">
+                <span class="card-title center-align">Game Controls</span>
+
+                <!-- Controls for the game -->
+                <div class="row">
+                    <div class="col s12 center-align">
+                        <button @onclick="ResetGame" class="btn red darken-4 waves-effect waves-light" disabled="@IsGameRunning">
+                            <i class="material-icons left">settings_backup_restore</i>
+                            Reset
+                        </button>
+                    </div>
                 </div>
-                <div class="col s2 center-align">
-                    <button @onclick="PauseGame" class="btn" disabled="@( ! IsGameRunning)">Pause</button>
+                <div class="row">
+                    <div class="col s12 center-align">
+                        <button @onclick="RandomizeBoard" class="btn indigo darken-1 waves-effect waves-light" disabled="@IsGameRunning">
+                            <i class="material-icons left">shuffle</i>
+                            Randomize
+                        </button>
+                    </div>
                 </div>
 
-                <div class="col s2 center-align">
-                    <buton @onclick="ResetGame" class="btn" disabled="@IsGameRunning">Reset</buton>
+                <div class="row">
+                    <div class="col s12">
+                        <label>
+                            <input type="checkbox" @bind="ShowGridLines" />
+                            <span>Show Grid Lines</span>
+                        </label>
+                    </div>
                 </div>
-                <div class="col s2 center-align">
-                    <buton @onclick="RandomizeBoard" class="btn" disabled="@IsGameRunning">Randomize</buton>
-                </div>
-                <div class="col s2 center-align">
-                    <button @onclick="Undo" class="btn" disabled="@ShouldDisableUndoButton()">Undo</button>
-                </div>
-                <div class="col s2 center-align">
-                    <button class="btn" disabled="true">Btn</button>
-                </div>
-            </div>
-            <div class="row">
-                <div class="col s12 center-align">
-                    <h5>Game State</h5>
-                    <textarea id="gameStateInput" rows="4" cols="50" @bind="gameState"></textarea>
-                    <br />
-                    <button @onclick="SaveState" class="btn">Save State</button>
-                    <button @onclick="LoadState" class="btn">Load State</button>
+
+                <!-- Game State Section -->
+                <div class="row">
+                    <div class="input-field col s12">
+                        <textarea class="materialize-textarea white-text" @bind="gameState"></textarea>
+                        <label for="gameStateInput">Game State</label>
+                    </div>
+                    <div class="col s6 center-align">
+                        <button @onclick="SaveState" class="btn green darken-1 waves-effect waves-light">
+                            <i class="material-icons left">save</i>
+                            Save
+                        </button>
+                    </div>
+                    <div class="col s6 center-align">
+                        <button @onclick="LoadState" class="btn orange darken-1 waves-effect waves-light">
+                            <i class="material-icons left">cloud_download</i>
+                            Load
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
-</div>
-<div class="row">
-    <div class="col s12 center-align">
-        <BECanvas Width="@CanvasWidth" Height="@CanvasHeight" @ref="_canvasReference"></BECanvas>
+
+
+    <!-- Right column for the game board -->
+    <div class="col s12 m8 grey darken-4">
+        <div class="row">
+            <!-- Top Button (Play/Pause) -->
+            <div class="col s12 center-align">
+                <a class="btn-floating btn-large indigo" @onclick="ToggleGameState">
+                    <i id="playPauseIcon" class="large material-icons">@(_isGameRunning ? "pause" : "play_arrow")</i>
+                </a>
+            </div>
+        </div>
+
+        <div class="row valign-wrapper">
+            <!-- Left Button (Undo) -->
+            <div class="col s2 center-align">
+                <a @onclick="Undo" class="btn-floating btn-large indigo" disabled="@ShouldDisableUndoButton()">
+                    <i class="large material-icons">skip_previous</i>
+                </a>
+            </div>
+
+            <!-- Canvas -->
+            <div class="col s8 center-align">
+                <BECanvas Width="@CanvasWidth" Height="@CanvasHeight" @ref="_canvasReference"></BECanvas>
+            </div>
+
+            <!-- Right Button (Next) -->
+            <div class="col s2 center-align">
+                <a class="btn-floating btn-large indigo" @onclick="GenerateNextState" disabled="@IsGameRunning">
+                    <i class="large material-icons">skip_next</i>
+                </a>
+            </div>
+        </div>
+
+        <!-- Hidden Canvases -->
         <div style="display: none;">
             <BECanvas Width="@CanvasWidth" Height="@CanvasHeight" @ref="_offscreenCanvasReference"></BECanvas>
             <BECanvas Width="@CanvasWidth" Height="@CanvasHeight" @ref="_bufferCanvasReference"></BECanvas>
         </div>
     </div>
 </div>
+
 
 @code {
     private Canvas2DContext _context;
@@ -80,6 +135,7 @@
     private List<Cell> _updatedCells = new List<Cell>();
 
     private string gameState;
+    private bool ShowGridLines { get; set; } = true;
 
     private DateTime _lastFrameTime;
     private const double DesiredFrameTime = 1.0 / 144.0;  // For 144 FPS
@@ -146,11 +202,11 @@
         var watch = Stopwatch.StartNew();
 
         // Fill the main canvas with the dead cell color
-        await _context.SetFillStyleAsync("#b0bec5");
+        await _context.SetFillStyleAsync("#424242");
         await _context.FillRectAsync(0, 0, CanvasWidth, CanvasHeight);
 
         // Transfer content from offscreen canvas (grid) to main canvas
-        if (!IsGameRunning) await JSRuntime.InvokeVoidAsync("transferGridContent");
+        if (!IsGameRunning && ShowGridLines) await JSRuntime.InvokeVoidAsync("transferGridContent");
 
         // Draw only the updated cells on the buffer canvas
         await _bufferContext.BeginBatchAsync();
@@ -158,7 +214,7 @@
         var updatedCells = _gameBoard.GetUpdatedCells();
 
         // Draw all alive cells
-        await _bufferContext.SetFillStyleAsync("#ff8f00"); // Alive cell color
+        await _bufferContext.SetFillStyleAsync("#1a237e"); // Alive cell color
         foreach (var cell in updatedCells.Where(c => c.IsAlive))
         {
             await _bufferContext.FillRectAsync(cell.Column * CellWidth, cell.Row * CellHeight, CellWidth, CellHeight);
@@ -216,6 +272,33 @@
         _gameTimer = null;
 
         _isGameRunning = false;
+    }
+
+    [JSInvokable]
+    public async Task ToggleGameState()
+    {
+        if (_isGameRunning)
+            PauseGame();
+        else
+            StartGame();
+
+        await JSRuntime.InvokeVoidAsync("togglePlayPauseIcon", _isGameRunning);
+    }
+
+    [JSInvokable]
+    private async Task UpdateTextareaValue(string newValue)
+    {
+        gameState = newValue;
+
+        await JSRuntime.InvokeVoidAsync("resizeAllMaterializeTextareas");
+    }
+
+    public void GenerateNextState()
+    {
+        if (!_isGameRunning)
+        {
+            _gameBoard.GenerateNextState();
+        }
     }
 
     public void Undo()
@@ -316,7 +399,7 @@
         byte[] compressedByteArray = ZipUtil.Compress(byteArray);
 
         // Convert the compressed byte array to a Base64 string for sharing
-        gameState = Convert.ToBase64String(compressedByteArray);
+        UpdateTextareaValue(Convert.ToBase64String(compressedByteArray));
     }
 
     private void LoadState()
