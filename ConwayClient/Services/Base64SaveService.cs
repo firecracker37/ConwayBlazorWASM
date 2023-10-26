@@ -1,5 +1,6 @@
 ﻿using ConwayClient.Models;
 using ConwayClient.Utils;
+using ConwaysGameOfLife.Core;
 using System.Collections;
 
 namespace ConwayClient.Services
@@ -66,14 +67,21 @@ namespace ConwayClient.Services
                 throw new ArgumentException("BitArray size doesn't match GameBoard size.");
             }
 
+            var newState = new GameState(gameBoard.Rows, gameBoard.Columns);
+
             int index = 0;
             for (int row = 0; row < gameBoard.Rows; row++)
             {
                 for (int col = 0; col < gameBoard.Columns; col++)
                 {
-                    gameBoard.SetCellState(row, col, bits[index++]);
+                    if (bits[index++])
+                    {
+                        newState.AddLiveCell(row, col);
+                    }
                 }
             }
+
+            gameBoard.UpdateState(newState);
         }
     }
 }

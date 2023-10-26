@@ -91,8 +91,6 @@
     private int CellWidth => CanvasWidth / Columns;
     private int CellHeight => CanvasHeight / Rows;
 
-    private List<Cell> _updatedCells = new List<Cell>();
-
     private string gameState;
     private bool ShowGridLines { get; set; } = true;
 
@@ -167,30 +165,34 @@
         // Transfer content from offscreen canvas (grid) to main canvas
         if (!IsGameRunning && ShowGridLines) await JSRuntime.InvokeVoidAsync("transferGridContent");
 
-        // Draw only the updated cells on the buffer canvas
-        await _bufferContext.BeginBatchAsync();
-
-        var updatedCells = _gameBoard.GetUpdatedCells();
-
-        // Draw all alive cells
-        await _bufferContext.SetFillStyleAsync("#1a237e"); // Alive cell color
-        foreach (var cell in updatedCells.Where(c => c.IsAlive))
+        if(_gameBoard.StateUpdated)
         {
-            await _bufferContext.FillRectAsync(cell.Column * CellWidth, cell.Row * CellHeight, CellWidth, CellHeight);
+            // Draw only the updated cells on the buffer canvas
+            await _bufferContext.BeginBatchAsync();
+
+            var bornCells = _gameBoard.GetBornCells();
+            var deadCells = _gameBoard.GetDeadCells();
+
+            // Draw all newly born cells
+            await _bufferContext.SetFillStyleAsync("#1a237e"); // Alive cell color
+            foreach (var cell in bornCells)
+            {
+                await _bufferContext.FillRectAsync(cell.Col * CellWidth, cell.Row * CellHeight, CellWidth, CellHeight);
+            }
+
+            // Clear all newly dead cells
+            foreach (var cell in deadCells)
+            {
+                await _bufferContext.ClearRectAsync(cell.Col * CellWidth, cell.Row * CellHeight, CellWidth, CellHeight);
+            }
+
+            await _bufferContext.EndBatchAsync();
+            _gameBoard.ResetStateUpdatedFlag();
         }
 
-        // Clear all newly dead cells
-        foreach (var cell in updatedCells.Where(c => !c.IsAlive))
-        {
-            await _bufferContext.ClearRectAsync(cell.Column * CellWidth, cell.Row * CellHeight, CellWidth, CellHeight);
-        }
-
-        await _bufferContext.EndBatchAsync();
 
         // Transfer content from buffer canvas to main canvas
         await JSRuntime.InvokeVoidAsync("transferBufferContent");
-
-        _gameBoard.ResetIsUpdated();
 
         watch.Stop();
         var timeSinceLastDraw = (currentTime - _lastFrameTime).TotalSeconds;
@@ -254,6 +256,7 @@
     {
         if (!IsGameRunning && _gameBoard.CanUndo())
         {
+            Console.WriteLine("Undo Button Click Registered");
             _gameBoard.UndoLastState();
         }
     }
