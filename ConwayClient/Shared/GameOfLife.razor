@@ -170,27 +170,26 @@
         // Draw only the updated cells on the buffer canvas
         await _bufferContext.BeginBatchAsync();
 
-        var updatedCells = _gameBoard.GetUpdatedCells();
+        var bornCells = _gameBoard.GetBornCells();
+        var deadCells = _gameBoard.GetDeadCells();
 
-        // Draw all alive cells
+        // Draw all newly born cells
         await _bufferContext.SetFillStyleAsync("#1a237e"); // Alive cell color
-        foreach (var cell in updatedCells.Where(c => c.IsAlive))
+        foreach (var cell in bornCells)
         {
-            await _bufferContext.FillRectAsync(cell.Column * CellWidth, cell.Row * CellHeight, CellWidth, CellHeight);
+            await _bufferContext.FillRectAsync(cell.Col * CellWidth, cell.Row * CellHeight, CellWidth, CellHeight);
         }
 
         // Clear all newly dead cells
-        foreach (var cell in updatedCells.Where(c => !c.IsAlive))
+        foreach (var cell in deadCells)
         {
-            await _bufferContext.ClearRectAsync(cell.Column * CellWidth, cell.Row * CellHeight, CellWidth, CellHeight);
+            await _bufferContext.ClearRectAsync(cell.Col * CellWidth, cell.Row * CellHeight, CellWidth, CellHeight);
         }
 
         await _bufferContext.EndBatchAsync();
 
         // Transfer content from buffer canvas to main canvas
         await JSRuntime.InvokeVoidAsync("transferBufferContent");
-
-        _gameBoard.ResetIsUpdated();
 
         watch.Stop();
         var timeSinceLastDraw = (currentTime - _lastFrameTime).TotalSeconds;

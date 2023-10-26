@@ -10,7 +10,7 @@ namespace ConwaysGameOfLife.History
 {
     public class HistoryManager
     {
-        private readonly List<HashSet<CellPosition>> _history = new List<HashSet<CellPosition>>();
+        private readonly List<HistoryEntry> _history = new List<HistoryEntry>();
         private const int MAX_HISTORY_SIZE = 100;  // Adjust as needed
 
         // Adds a game state to the history
@@ -21,21 +21,22 @@ namespace ConwaysGameOfLife.History
                 _history.RemoveAt(0);
             }
 
-            _history.Add(new HashSet<CellPosition>(state.GetLiveCells()));
+            var historyEntry = new HistoryEntry(state.Rows, state.Columns, new HashSet<CellPosition>(state.GetLiveCells()));
+            _history.Add(historyEntry);
         }
 
         // Retrieves a game state from the history by its index
-        public GameState GetStateFromHistory(int index, int rows, int columns)
+        public GameState GetStateFromHistory(int index)
         {
             if (index < 0 || index >= _history.Count)
             {
                 return null;  // Or throw an exception
             }
 
-            var liveCells = _history[index];
-            var retrievedState = new GameState(rows, columns);
+            var historyEntry = _history[index];
+            var retrievedState = new GameState(historyEntry.Rows, historyEntry.Columns);
 
-            foreach (var cell in liveCells)
+            foreach (var cell in historyEntry.LiveCells)
             {
                 retrievedState.AddLiveCell(cell.Row, cell.Col);
             }
@@ -60,18 +61,18 @@ namespace ConwaysGameOfLife.History
             _history.Clear();
         }
 
-        public GameState UndoLastState(int rows, int columns)
+        public GameState UndoLastState()
         {
             if (IsHistoryEmpty)
             {
                 return null;  // Or throw an exception
             }
 
-            var lastStateCells = _history[_history.Count - 1];
+            var lastHistoryEntry = _history[_history.Count - 1];
             _history.RemoveAt(_history.Count - 1);
 
-            var retrievedState = new GameState(rows, columns);
-            foreach (var cell in lastStateCells)
+            var retrievedState = new GameState(lastHistoryEntry.Rows, lastHistoryEntry.Columns);
+            foreach (var cell in lastHistoryEntry.LiveCells)
             {
                 retrievedState.AddLiveCell(cell.Row, cell.Col);
             }
@@ -80,17 +81,17 @@ namespace ConwaysGameOfLife.History
         }
 
         // Peeks at the last game state added to the history without removing it
-        public GameState PeekLastState(int rows, int columns)
+        public GameState PeekLastState()
         {
             if (IsHistoryEmpty)
             {
                 return null;  // Or throw an exception
             }
 
-            var lastStateCells = _history[_history.Count - 1];
+            var lastHistoryEntry = _history[_history.Count - 1];
 
-            var retrievedState = new GameState(rows, columns);
-            foreach (var cell in lastStateCells)
+            var retrievedState = new GameState(lastHistoryEntry.Rows, lastHistoryEntry.Columns);
+            foreach (var cell in lastHistoryEntry.LiveCells)
             {
                 retrievedState.AddLiveCell(cell.Row, cell.Col);
             }

@@ -48,6 +48,16 @@ namespace ConwaysGameOfLife.Core
         {
             return _liveCells;
         }
+
+        public GameState Clone()
+        {
+            var clonedState = new GameState(this.Rows, this.Columns);
+            foreach (var cell in this.GetLiveCells())
+            {
+                clonedState.AddLiveCell(cell.Row, cell.Col);
+            }
+            return clonedState;
+        }
     }
 
 }
