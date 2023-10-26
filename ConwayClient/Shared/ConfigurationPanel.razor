@@ -16,8 +16,6 @@
     }
     private string _gameState = "";
     [Parameter] public EventCallback<string> GameStateChanged { get; set; }
-    [Parameter] public EventCallback OnStartGame { get; set; }
-    [Parameter] public EventCallback OnStopGame { get; set; }
     [Parameter] public EventCallback OnResetGame { get; set; }
     [Parameter] public EventCallback OnRandomizeBoard { get; set; }
     [Parameter] public EventCallback OnToggleGridLines { get; set; }

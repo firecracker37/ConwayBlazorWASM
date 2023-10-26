@@ -24,6 +24,8 @@ namespace ConwayClient.Models
         public GameBoard(int rows, int columns)
         {
             _currentState = new GameState(rows, columns);
+            _bornCells = new List<CellPosition>();
+            _deadCells = new List<CellPosition>();
         }
 
         public void UpdateState(GameState newState)
@@ -71,9 +73,6 @@ namespace ConwayClient.Models
             // Use StateTransformer to get the new state
             var newState = _stateTransformer.GenerateNextState(_currentState);
 
-            // Update the history manager with the new state
-            _historyManager.AddToHistory(_currentState);
-
             UpdateState(newState);
 
             totalStopwatch.Stop();
@@ -82,8 +81,8 @@ namespace ConwayClient.Models
 
         public void UndoLastState()
         {
-            if (!_historyManager.IsHistoryEmpty) return;
-
+            if (_historyManager.IsHistoryEmpty) return;
+            Console.WriteLine("UndoLastState() has fired");
             var lastState = _historyManager.UndoLastState();
 
             UpdateState(lastState);
@@ -91,7 +90,7 @@ namespace ConwayClient.Models
 
         public bool CanUndo()
         {
-            return _historyManager.IsHistoryEmpty;
+            return !_historyManager.IsHistoryEmpty;
         }
 
 
