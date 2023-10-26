@@ -1,0 +1,87 @@
+﻿@code {
+    [Parameter] public bool IsGameRunning { get; set; }
+    [Parameter] public bool ShowGridLines { get; set; }
+    [Parameter]
+    public string GameState
+    {
+        get => _gameState;
+        set
+        {
+            if (_gameState != value)
+            {
+                _gameState = value;
+                GameStateChanged.InvokeAsync(value);
+            }
+        }
+    }
+    private string _gameState = "";
+    [Parameter] public EventCallback<string> GameStateChanged { get; set; }
+    [Parameter] public EventCallback OnStartGame { get; set; }
+    [Parameter] public EventCallback OnStopGame { get; set; }
+    [Parameter] public EventCallback OnResetGame { get; set; }
+    [Parameter] public EventCallback OnRandomizeBoard { get; set; }
+    [Parameter] public EventCallback OnToggleGridLines { get; set; }
+    [Parameter] public EventCallback<string> OnSaveState { get; set; }
+    [Parameter] public EventCallback<string> OnLoadState { get; set; }
+}
+
+<div class="card grey darken-4">
+    <div class="card-content white-text">
+        <span class="card-title center-align">Game Controls</span>
+
+        <!-- Controls for the game -->
+        <div class="row">
+            <div class="col s12 center-align">
+                <button @onclick="() => OnResetGame.InvokeAsync(null)" class="btn red darken-4 waves-effect waves-light" disabled="@IsGameRunning">
+                    <i class="material-icons left">settings_backup_restore</i>
+                    Reset
+                </button>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col s12 center-align">
+                <button @onclick="() => OnRandomizeBoard.InvokeAsync(null)" class="btn indigo darken-1 waves-effect waves-light" disabled="@IsGameRunning">
+                    <i class="material-icons left">shuffle</i>
+                    Randomize
+                </button>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col s12">
+                <label>
+                    <input type="checkbox" checked="@ShowGridLines" @onchange="ToggleGridLines" />
+                    <span>Show Grid Lines</span>
+                </label>
+            </div>
+        </div>
+
+        <!-- Game State Section -->
+        <div class="row">
+            <div class="input-field col s12">
+                <textarea class="materialize-textarea white-text" @bind="GameState"></textarea>
+                <label for="gameStateInput">Game State</label>
+            </div>
+            <div class="col s6 center-align">
+                <button @onclick="() => OnSaveState.InvokeAsync(GameState)" class="btn green darken-1 waves-effect waves-light">
+                    <i class="material-icons left">save</i>
+                    Save
+                </button>
+            </div>
+            <div class="col s6 center-align">
+                <button @onclick="() => OnLoadState.InvokeAsync(GameState)" class="btn orange darken-1 waves-effect waves-light">
+                    <i class="material-icons left">cloud_download</i>
+                    Load
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private void ToggleGridLines(ChangeEventArgs e)
+    {
+        ShowGridLines = (bool)e.Value;
+        OnToggleGridLines.InvokeAsync(ShowGridLines);
+    }
+}

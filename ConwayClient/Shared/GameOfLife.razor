@@ -3,68 +3,27 @@
 @using Blazor.Extensions.Canvas;
 @using ConwayClient.Models;
 @using ConwayClient.Utils;
+@using ConwayClient.Services;
 @using System.Diagnostics;
 @using System.Collections;
 
 @inject IJSRuntime JSRuntime
+@inject ISaveService SaveService
 
 <!-- Row for the entire layout -->
 <div class="row grey darken-3">
 
     <!-- Left column for the configuration panel -->
     <div class="col s12 m4">
-        <div class="card grey darken-4">
-            <div class="card-content white-text">
-                <span class="card-title center-align">Game Controls</span>
+        <ConfigurationPanel IsGameRunning="IsGameRunning"
+                            ShowGridLines="ShowGridLines"
+                            @bind-GameState="gameState"
+                            OnResetGame="HandleResetGame"
+                            OnRandomizeBoard="HandleRandomizeBoard"
+                            OnToggleGridLines="HandleToggleGridLines"
+                            OnSaveState="HandleSaveState"
+                            OnLoadState="HandleLoadState" />
 
-                <!-- Controls for the game -->
-                <div class="row">
-                    <div class="col s12 center-align">
-                        <button @onclick="ResetGame" class="btn red darken-4 waves-effect waves-light" disabled="@IsGameRunning">
-                            <i class="material-icons left">settings_backup_restore</i>
-                            Reset
-                        </button>
-                    </div>
-                </div>
-                <div class="row">
-                    <div class="col s12 center-align">
-                        <button @onclick="RandomizeBoard" class="btn indigo darken-1 waves-effect waves-light" disabled="@IsGameRunning">
-                            <i class="material-icons left">shuffle</i>
-                            Randomize
-                        </button>
-                    </div>
-                </div>
-
-                <div class="row">
-                    <div class="col s12">
-                        <label>
-                            <input type="checkbox" @bind="ShowGridLines" />
-                            <span>Show Grid Lines</span>
-                        </label>
-                    </div>
-                </div>
-
-                <!-- Game State Section -->
-                <div class="row">
-                    <div class="input-field col s12">
-                        <textarea class="materialize-textarea white-text" @bind="gameState"></textarea>
-                        <label for="gameStateInput">Game State</label>
-                    </div>
-                    <div class="col s6 center-align">
-                        <button @onclick="SaveState" class="btn green darken-1 waves-effect waves-light">
-                            <i class="material-icons left">save</i>
-                            Save
-                        </button>
-                    </div>
-                    <div class="col s6 center-align">
-                        <button @onclick="LoadState" class="btn orange darken-1 waves-effect waves-light">
-                            <i class="material-icons left">cloud_download</i>
-                            Load
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
     </div>
 
 
@@ -169,7 +128,7 @@
     private async Task DrawGridLines(Canvas2DContext context, int canvasWidth, int canvasHeight, int cellWidth, int cellHeight)
     {
         await context.BeginBatchAsync();
-        await context.SetStrokeStyleAsync("white");
+        await context.SetStrokeStyleAsync("#bdbdbd");
 
         // Drawing horizontal lines
         for (int y = 0; y <= canvasHeight; y += cellHeight)
@@ -244,8 +203,6 @@
         _lastFrameTime = currentTime;
     }
 
-
-
     [JSInvokable]
     public async Task Render()
     {
@@ -283,14 +240,6 @@
             StartGame();
 
         await JSRuntime.InvokeVoidAsync("togglePlayPauseIcon", _isGameRunning);
-    }
-
-    [JSInvokable]
-    private async Task UpdateTextareaValue(string newValue)
-    {
-        gameState = newValue;
-
-        await JSRuntime.InvokeVoidAsync("resizeAllMaterializeTextareas");
     }
 
     public void GenerateNextState()
@@ -341,87 +290,52 @@
         _gameBoard.RandomizeBoard();
     }
 
-    private BitArray ConvertStateToBitArray(GameBoard gameBoard)
-    {
-        BitArray bits = new BitArray(gameBoard.Rows * gameBoard.Columns);
-
-        int index = 0;
-        for (int row = 0; row < gameBoard.Rows; row++)
-        {
-            for (int col = 0; col < gameBoard.Columns; col++)
-            {
-                bits[index++] = gameBoard.GetCellState(row, col);
-            }
-        }
-
-        return bits;
-    }
-
-    private void SetStateFromBitArray(GameBoard gameBoard, BitArray bits)
-    {
-        if (bits.Length != gameBoard.Rows * gameBoard.Columns)
-        {
-            throw new ArgumentException("BitArray size doesn't match GameBoard size.");
-        }
-
-        int index = 0;
-        for (int row = 0; row < gameBoard.Rows; row++)
-        {
-            for (int col = 0; col < gameBoard.Columns; col++)
-            {
-                gameBoard.SetCellState(row, col, bits[index++]);
-            }
-        }
-    }
-
-    public static string BitArrayToBase64(BitArray bits)
-    {
-        byte[] bytes = new byte[(bits.Length + 7) / 8];
-        bits.CopyTo(bytes, 0);
-        return Convert.ToBase64String(bytes);
-    }
-
-    public static BitArray Base64ToBitArray(string base64)
-    {
-        byte[] bytes = Convert.FromBase64String(base64);
-        return new BitArray(bytes);
-    }
-
     private void SaveState()
     {
-        /// Convert the game board's state to a BitArray
-        BitArray bitArray = ConvertStateToBitArray(_gameBoard);
-
-        // Convert the BitArray to a byte array
-        byte[] byteArray = ZipUtil.BitArrayToByteArray(bitArray);
-
-        // Compress the byte array
-        byte[] compressedByteArray = ZipUtil.Compress(byteArray);
-
-        // Convert the compressed byte array to a Base64 string for sharing
-        UpdateTextareaValue(Convert.ToBase64String(compressedByteArray));
+        gameState = SaveService.Save(_gameBoard);
     }
 
     private void LoadState()
     {
-        // Get the gameState from the textarea
-
-        // Decode the Base64 string to a byte array
-        byte[] compressedBytes = Convert.FromBase64String(gameState);
-
-        // Decompress the byte array
-        byte[] decompressedBytes = ZipUtil.Decompress(compressedBytes);
-
-        // Convert the byte array back to a BitArray
-        BitArray bitArray = new BitArray(decompressedBytes);
-
-        // Convert the BitArray back to your game board's state
-        SetStateFromBitArray(_gameBoard, bitArray);
+        _gameBoard = SaveService.Load(gameState, Rows, Columns);
     }
 
     public void Dispose()
     {
         _gameTimer?.Dispose();
         _objectReference?.Dispose();
+    }
+
+    // Event Handlers for ConfigurationPanel actions
+    private void HandleResetGame()
+    {
+        ResetGame();
+    }
+
+    private void HandleRandomizeBoard()
+    {
+        RandomizeBoard();
+    }
+
+    private void HandleToggleGridLines()
+    {
+        ShowGridLines = !ShowGridLines;
+    }
+
+    private void HandleSaveState(string gameState)
+    {
+        this.gameState = gameState;
+        SaveState();
+    }
+
+    private void HandleLoadState(string gameState)
+    {
+        this.gameState = gameState;
+        LoadState();
+    }
+
+    private void OnGameStateChanged(string newState)
+    {
+        gameState = newState;
     }
 }
