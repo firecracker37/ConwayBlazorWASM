@@ -9,9 +9,9 @@
     "assembly": {
       "Blazor.Extensions.Canvas.dll": "sha256-W20pWMXQg2yTv0w4VJhrjCJKNRYe3PiUU9S76XipNe8=",
       "Blazor.Extensions.Canvas.JS.dll": "sha256-TrW1uaSNUS+J8xVJErxIf1NQuNC7kn50KzMYYF\/4JtM=",
-      "ConwayClient.dll": "sha256-UJE3O\/i64KimtTHEUvZL+7qm8hTMn+nPDNglWqTA6OM=",
+      "ConwayClient.dll": "sha256-iVjt7ssXJ85khJo5WJRAwsLOU5wvtXCZ5+AZy4eRPU8=",
       "K4os.Compression.LZ4.dll": "sha256-qcgzXahbDrLGPOsNw7itZ1xPkzDGI0CqMmGpz03hBBM=",
-      "Microsoft.AspNetCore.Components.dll": "sha256-qFlENoXbKvxmqRO2yGd9hjVG48MK47\/NWDJcyJe0Xjo=",
+      "Microsoft.AspNetCore.Components.dll": "sha256-yAJ7vVvYhAl2Tbw+AnVCSjM0M+p7xglZMu6frOHCdC0=",
       "Microsoft.AspNetCore.Components.Web.dll": "sha256-TRr05jMZzrANB34c8na6dFxTc2vRq+oanVac1I7\/GIc=",
       "Microsoft.AspNetCore.Components.WebAssembly.dll": "sha256-baKCtIss3QXEU6\/YaTn6w1StGtCNFjZPnqpLtne4B3w=",
       "Microsoft.Extensions.Configuration.Abstractions.dll": "sha256-X\/f4fDl2cuIRXeWHhK\/f2UqQbFioD+RU4a4CEh0zrrQ=",
