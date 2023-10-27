@@ -1,0 +1,258 @@
+﻿@page "/"
+@layout Layout
+@inject IJSRuntime JSRuntime
+@using ConwayClient.Models;
+@using Blazor.Extensions.Canvas.Canvas2D
+@using Blazor.Extensions.Canvas
+@using Blazor.Extensions;
+
+<div class="game-container blue-grey darken-1" style="width: 100%; max-width: 100%;">
+    <div class="header white-text">
+        <span class="title">Game Board</span>
+    </div>
+    <div style="background-color: black; width: @canvasSize; height: @canvasSize;">
+        <BECanvas Width="@canvasSize" Height="@canvasSize" @ref="_canvasReference"></BECanvas>
+        <div style="display: none">
+            <BECanvas Width="@canvasSize" Height="@canvasSize" @ref="_bufferCanvasReference"></BECanvas>
+            <BECanvas Width="@canvasSize" Height="@canvasSize" @ref="_gridCanvasReference"></BECanvas>
+            <BECanvas Width="@canvasSize" Height="@canvasSize" @ref="_cellCanvasReference"></BECanvas>
+            <BECanvas Width="@canvasSize" Height="@canvasSize" @ref="_uiCanvasReference"></BECanvas>
+        </div>
+    </div>
+</div>
+
+@code {
+    private BECanvasComponent _canvasReference;
+    private Canvas2DContext _canvasContext;
+    private BECanvasComponent _bufferCanvasReference;
+    private Canvas2DContext _bufferCanvasContext;
+    private BECanvasComponent _gridCanvasReference;
+    private Canvas2DContext _gridCanvasContext;
+    private BECanvasComponent _cellCanvasReference;
+    private Canvas2DContext _cellCanvasContext;
+    private BECanvasComponent _uiCanvasReference;
+    private Canvas2DContext _uiCanvasContext;
+
+    private DotNetObjectReference<Index> _objectReference;
+    private GameBoard _gameBoard;
+
+    private bool _isGameRunning = false;
+    public bool IsGameRunning => _isGameRunning;
+    private bool _showUI = false;
+    private Timer _uiHideTimer;
+
+    public int Rows { get; set; } = 128;
+    public int Columns { get; set; } = 128;
+
+    private long canvasSize = 768; // Default value
+    private int CanvasWidth => (int)canvasSize;
+    private int CanvasHeight => (int)canvasSize;
+    private int CellWidth => CanvasWidth / Columns;
+    private int CellHeight => CanvasHeight / Rows;
+
+    private string gameState = string.Empty;
+    private bool ShowGridLines { get; set; } = true;
+
+    private DateTime _lastFrameTime;
+    private const double DesiredFrameTime = 1.0 / 60.0;
+
+    // A timestamp to keep track of the last game state update
+    private DateTime _lastGameStateUpdateTime;
+
+    // A timer to control the game update frequency
+    private Timer _gameUpdateTimer;
+
+    // The update interval in milliseconds (initially 500ms for 2 generations per second)
+    private int _gameUpdateInterval = 500;
+
+    // Define UI Elements Location
+    private Rectangle PlayButton => new Rectangle(50, 50, 60, 60);
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Fetch the device's viewport width
+        var viewportWidth = await JSRuntime.InvokeAsync<double>("getInnerWidth");
+
+        // Set canvas size based on viewport width
+        if (viewportWidth <= 768) // Mobile devices
+        {
+            canvasSize = (long)Math.Floor(viewportWidth);
+        }
+        else // Larger desktop screens
+        {
+            canvasSize = 768; // Max size for the canvas
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            _objectReference = DotNetObjectReference.Create(this);
+
+            // Initialize all canvases and contexts
+            _canvasContext = await _canvasReference.CreateCanvas2DAsync();
+            _bufferCanvasContext = await _bufferCanvasReference.CreateCanvas2DAsync();
+            _gridCanvasContext = await _gridCanvasReference.CreateCanvas2DAsync();
+            _cellCanvasContext = await _cellCanvasReference.CreateCanvas2DAsync();
+            _uiCanvasContext = await _uiCanvasReference.CreateCanvas2DAsync();
+
+            // Add main canvas click listener
+            await JSRuntime.InvokeVoidAsync("addMainCanvasClickListener", _objectReference);
+
+            // Add main canvas hover and touch listener
+            await JSRuntime.InvokeVoidAsync("addCanvasInteractionListener", _objectReference);
+
+            // Draw the initial grid lines on the grid canvas
+            //await DrawGridLines(_gridCanvasContext, CanvasWidth, CanvasHeight, CellWidth, CellHeight);
+
+            // Start the continuous rendering loop
+            await JSRuntime.InvokeVoidAsync("requestAnimationLoop", _objectReference);
+        }
+    }
+
+    private async Task DrawGridLines(Canvas2DContext context, int canvasWidth, int canvasHeight, int cellWidth, int cellHeight)
+    {
+        await context.BeginBatchAsync();
+        await context.SetStrokeStyleAsync("#bdbdbd");
+
+        // Drawing horizontal lines
+        for (int y = 0; y <= canvasHeight; y += cellHeight)
+        {
+            await context.BeginPathAsync();
+            await context.MoveToAsync(0, y);
+            await context.LineToAsync(canvasWidth, y);
+            await context.StrokeAsync();
+        }
+
+        // Drawing vertical lines
+        for (int x = 0; x <= canvasWidth; x += cellWidth)
+        {
+            await context.BeginPathAsync();
+            await context.MoveToAsync(x, 0);
+            await context.LineToAsync(x, canvasHeight);
+            await context.StrokeAsync();
+        }
+
+        await context.EndBatchAsync();
+    }
+
+    // This method will be called continuously by our game loop
+    [JSInvokable]
+    public async Task Render()
+    {
+        // Update individual canvas elements
+        await Update();
+
+        // Draw to the buffer canvas
+        await DrawToBufferCanvas();
+
+        // Composite the buffer canvas onto the main canvas
+        await CompositeCanvases();
+    }
+
+    private async Task Update()
+    {
+        await UpdateCellCanvas();
+        await UpdateGridCanvas();
+        await UpdateUiCanvas();
+    }
+
+    private async Task UpdateCellCanvas()
+    {
+        await _cellCanvasContext.SetFontAsync("20px sans-serif");
+        await _cellCanvasContext.SetFillStyleAsync("blue");
+        await _cellCanvasContext.FillTextAsync("Cell Canvas", 50, 50);
+    }
+
+    private async Task UpdateGridCanvas()
+    {
+        await _gridCanvasContext.SetFontAsync("20px sans-serif");
+        await _gridCanvasContext.SetFillStyleAsync("red");
+        await _gridCanvasContext.FillTextAsync("Grid Canvas", 50, 100);
+    }
+
+    private async Task UpdateUiCanvas()
+    {
+        await _uiCanvasContext.SetFillStyleAsync("green");
+        await _uiCanvasContext.FillRectAsync(PlayButton.X, PlayButton.Y, PlayButton.Width, PlayButton.Height);
+    }
+
+
+    private async Task DrawToBufferCanvas()
+    {
+        // Fill buffer with dead cell color
+        await _bufferCanvasContext.SetFillStyleAsync("#424242");
+        await _bufferCanvasContext.FillRectAsync(0, 0, CanvasWidth, CanvasHeight);
+
+        // Overlay live cells from cellCanvasContext onto bufferCanvasContext
+        await _bufferCanvasContext.DrawImageAsync(_cellCanvasReference.CanvasReference, 0, 0);
+
+        // Overlay grid lines if enabled
+        if (ShowGridLines)
+            await _bufferCanvasContext.DrawImageAsync(_gridCanvasReference.CanvasReference, 0, 0);
+    }
+
+    private async Task CompositeCanvases()
+    {
+        // Clear the main canvas
+        await _canvasContext.ClearRectAsync(0, 0, canvasSize, canvasSize);
+
+        // Transfer content from buffer canvas to main canvas
+        await _canvasContext.DrawImageAsync(_bufferCanvasReference.CanvasReference, 0, 0);
+
+        // If _showUI is true, then render the UI
+        if (_showUI)
+        {
+            await _canvasContext.DrawImageAsync(_uiCanvasReference.CanvasReference, 0, 0);
+        }
+    }
+
+    [JSInvokable]
+    public void HandleCanvasInteraction()
+    {
+        _showUI = true;
+        _uiHideTimer?.Dispose();  // Dispose of any existing timer
+        _uiHideTimer = new Timer(HideUI, null, 750, Timeout.Infinite);
+    }
+
+    [JSInvokable]
+    public void CanvasClick(double x, double y)
+    {
+        if (PlayButton.Contains((int)x, (int)y))
+        {
+            Console.WriteLine("User clicked play");
+        }
+        else
+        {
+            Console.WriteLine($"Canvas clicked at {x}:{y}");
+        }
+    }
+
+    private void HideUI(object state)
+    {
+        _showUI = false;
+        _uiHideTimer.Dispose();
+        _uiHideTimer = null;
+    }
+
+
+    [JSInvokable]
+    public async Task OnWindowResize()
+    {
+        // Fetch the device's viewport width
+        var viewportWidth = await JSRuntime.InvokeAsync<double>("getInnerWidth");
+
+        // Set canvas size based on viewport width
+        if (viewportWidth <= 768) // Mobile devices
+        {
+            canvasSize = (long)viewportWidth;
+        }
+        else // Larger desktop screens
+        {
+            canvasSize = 768; // Max size for the canvas
+        }
+
+        StateHasChanged(); // Request a re-render of the component
+    }
+}

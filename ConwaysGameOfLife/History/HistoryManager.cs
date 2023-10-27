@@ -18,7 +18,6 @@ namespace ConwaysGameOfLife.History
 
             var historyEntry = new HistoryEntry(state.Rows, state.Columns, new HashSet<CellPosition>(state.GetLiveCells()));
             _history.Add(historyEntry);
-            Console.WriteLine("Adding state to history");
         }
 
         // Retrieves a game state from the history by its index
@@ -63,7 +62,6 @@ namespace ConwaysGameOfLife.History
             {
                 return null;  // Or throw an exception
             }
-            Console.WriteLine("UndoLastState() in History Manager has fired");
             var lastHistoryEntry = _history[_history.Count - 1];
             _history.RemoveAt(_history.Count - 1);
 
