@@ -1,0 +1,13 @@
+﻿.game-container {
+    border-radius: 2px;
+    overflow: hidden;
+}
+
+.header {
+    padding: 16px;
+}
+
+.title {
+    font-size: 24px;
+    font-weight: bold;
+}

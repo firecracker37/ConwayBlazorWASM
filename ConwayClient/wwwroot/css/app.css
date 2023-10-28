@@ -18,6 +18,39 @@
     box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19); /* Adds a subtle shadow for depth */
 }
 
+.no-margin {
+    margin: 0 !important;
+}
+
+.no-padding {
+    padding: 0 !important;
+}
+
+.d-flex {
+    display: flex;
+}
+
+.align-items-center {
+    align-items: center;
+}
+
+.justify-content-center {
+    justify-content: center;
+}
+
+.ui-container {
+    position: relative; /* Establishes a positioning context */
+}
+
+.ui-elements {
+    opacity: 0;
+    transition: opacity 0.3s ease-in-out;
+}
+
+    .ui-elements.show {
+        opacity: 1;
+    }
+
 h1:focus {
     outline: none;
 }

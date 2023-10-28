@@ -9,7 +9,6 @@ namespace ConwayClient.Models
     {
         public int Rows => _currentState.Rows;
         public int Columns => _currentState.Columns;
-        public bool IsUpdated => _historyManager.HistoryCount > 0;  // Assuming the history count can be used as an indicator
 
         private GameState _currentState;
         private StateTransformer _stateTransformer = new StateTransformer();
@@ -82,7 +81,6 @@ namespace ConwayClient.Models
         public void UndoLastState()
         {
             if (_historyManager.IsHistoryEmpty) return;
-            Console.WriteLine("UndoLastState() has fired");
             var lastState = _historyManager.UndoLastState();
 
             UpdateState(lastState);

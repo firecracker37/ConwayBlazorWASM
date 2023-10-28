@@ -91,7 +91,7 @@
     private int CellWidth => CanvasWidth / Columns;
     private int CellHeight => CanvasHeight / Rows;
 
-    private string gameState;
+    private string gameState = string.Empty;
     private bool ShowGridLines { get; set; } = true;
 
     private DateTime _lastFrameTime;
@@ -256,7 +256,6 @@
     {
         if (!IsGameRunning && _gameBoard.CanUndo())
         {
-            Console.WriteLine("Undo Button Click Registered");
             _gameBoard.UndoLastState();
         }
     }
