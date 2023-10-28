@@ -11,12 +11,17 @@
         <span class="title">Game Board</span>
     </div>
     <div style="background-color: black; width: @canvasSize; height: @canvasSize;">
-        <ConwayControlUi 
-            CanvasSize="@CanvasWidth" 
-            ShowUI="@_showUI" 
-            OnUIVisibilityChanged="ToggleUIVisibility" 
-            IsGameRunning="@_isGameRunning" 
-            ToggleGameState="HandleGameToggle">
+        <ConwayControlUi CanvasSize="@CanvasWidth"
+                         ShowUI="@_showUI"
+                         OnUIVisibilityChanged="ToggleUIVisibility"
+                         IsGameRunning="@_isGameRunning"
+                         ShowGridLines = "@_showGridLines"
+                         ToggleGameState="HandleGameToggle"
+                         ToggleGridLines ="HandleGridToggle"
+                         OnPreviousState="HandlePreviousState"
+                         OnNextState="HandleNextState"
+                         OnReset="HandleReset"
+                         OnRandomize="HandleRandomize">
             <BECanvas Width="@canvasSize" Height="@canvasSize" @ref="_canvasReference"></BECanvas>
             <div style="display: none">
                 <BECanvas Width="@offscreenCanvasSize" Height="@offscreenCanvasSize" @ref="_bufferCanvasReference"></BECanvas>
@@ -39,6 +44,7 @@
 
     private DotNetObjectReference<Index> _objectReference;
     private GameBoard _gameBoard;
+    private Timer _gameTimer;
 
     private bool _isGameRunning = false;
     public bool IsGameRunning => _isGameRunning;
@@ -56,7 +62,7 @@
     private int CellHeight => CanvasHeight / Rows;
 
     private string gameState = string.Empty;
-    private bool ShowGridLines { get; set; } = true;
+    private bool _showGridLines { get; set; } = false;
 
     private DateTime _lastFrameTime;
     private const double DesiredFrameTime = 1.0 / 60.0;
@@ -73,6 +79,7 @@
         {
             try
             {
+                _gameBoard = new GameBoard(Rows, Columns);
                 _objectReference = DotNetObjectReference.Create(this);
 
                 // Initialize all canvases and contexts
@@ -85,7 +92,6 @@
                 if (viewportWidth <= 768)
                 {
                     canvasSize = (long)Math.Floor(viewportWidth);
-                    Console.WriteLine($"Setting Canvas Size to: {canvasSize.ToString()}");
                     StateHasChanged();  // Request re-render with the updated size
                 }
                 // Add window resize listener
@@ -98,7 +104,7 @@
                 await JSRuntime.InvokeVoidAsync("addIndexCanvasInteractionListener", _objectReference);
 
                 // Draw the initial grid lines on the grid canvas
-                //await DrawGridLines(_gridCanvasContext, CanvasWidth, CanvasHeight, CellWidth, CellHeight);
+                await DrawGridLines(_gridCanvasContext, CanvasWidth, CanvasHeight, CellWidth, CellHeight);
 
                 // Start the continuous rendering loop
                 await JSRuntime.InvokeVoidAsync("requestAnimationLoop", _objectReference);
@@ -162,7 +168,7 @@
         try
         {
             await UpdateCellCanvas();
-            await UpdateGridCanvas();
+            // await UpdateGridCanvas();
         }
         catch (Exception ex)
         {
@@ -174,14 +180,30 @@
     {
         try
         {
-            if(_isGameRunning) _frameCount++;  // Increment the frame count every time this method is called
+            if (_gameBoard.StateUpdated)
+            {
+                // Draw only the updated cells on the buffer canvas
+                await _cellCanvasContext.BeginBatchAsync();
 
-            // Clear the area where the text will be drawn
-            await _cellCanvasContext.ClearRectAsync(50, 30, 200, 30); // Clearing an area of width 200px and height 30px
+                var bornCells = _gameBoard.GetBornCells();
+                var deadCells = _gameBoard.GetDeadCells();
 
-            await _cellCanvasContext.SetFontAsync("20px sans-serif");
-            await _cellCanvasContext.SetFillStyleAsync("blue");
-            await _cellCanvasContext.FillTextAsync($"Frames: {_frameCount}", 50, 50);
+                // Draw all newly born cells
+                await _cellCanvasContext.SetFillStyleAsync("#1a237e"); // Alive cell color
+                foreach (var cell in bornCells)
+                {
+                    await _cellCanvasContext.FillRectAsync(cell.Col * CellWidth, cell.Row * CellHeight, CellWidth, CellHeight);
+                }
+
+                // Clear all newly dead cells
+                foreach (var cell in deadCells)
+                {
+                    await _cellCanvasContext.ClearRectAsync(cell.Col * CellWidth, cell.Row * CellHeight, CellWidth, CellHeight);
+                }
+
+                await _cellCanvasContext.EndBatchAsync();
+                _gameBoard.ResetStateUpdatedFlag();
+            }
         }
         catch (Exception ex)
         {
@@ -193,9 +215,7 @@
     {
         try
         {
-            await _gridCanvasContext.SetFontAsync("20px sans-serif");
-            await _gridCanvasContext.SetFillStyleAsync("red");
-            await _gridCanvasContext.FillTextAsync("Grid Canvas", 50, 100);
+            await DrawGridLines(_gridCanvasContext, CanvasWidth, CanvasHeight, CellWidth, CellHeight);
         }
         catch (Exception ex)
         {
@@ -215,7 +235,7 @@
             await _bufferCanvasContext.DrawImageAsync(_cellCanvasReference.CanvasReference, 0, 0);
 
             // Overlay grid lines if enabled
-            if (ShowGridLines)
+            if (_showGridLines)
                 await _bufferCanvasContext.DrawImageAsync(_gridCanvasReference.CanvasReference, 0, 0);
         }
         catch (Exception ex)
@@ -243,6 +263,28 @@
         }
     }
 
+    public void StartGame()
+    {
+        if (_isGameRunning) return;
+
+        _gameTimer = new Timer(_ =>
+        {
+            _gameBoard.GenerateNextState(); // Directly generate the next game state
+        }, null, 0, 500);  // Adjust the interval as needed
+
+        _isGameRunning = true;
+    }
+
+    public void PauseGame()
+    {
+        if (!_isGameRunning) return;
+
+        _gameTimer?.Dispose();
+        _gameTimer = null;
+
+        _isGameRunning = false;
+    }
+
     [JSInvokable]
     public async Task HandleCanvasInteraction()
     {
@@ -261,7 +303,15 @@
     [JSInvokable]
     public void CanvasClick(double x, double y)
     {
-        Console.WriteLine($"Canvas clicked at: {x}:{y}");
+        if (IsGameRunning) return;
+
+        int col = (int)x / CellWidth;
+        int row = (int)y / CellHeight;
+
+        if (row >= 0 && row < Rows && col >= 0 && col < Columns)
+        {
+            _gameBoard.ToggleCellState(row, col);
+        }
     }
 
     private async Task ToggleUIVisibility(bool newState)
@@ -272,8 +322,45 @@
 
     private void HandleGameToggle(bool newState)
     {
+        if (_isGameRunning)
+            PauseGame();
+        else
+            StartGame();
+
         _isGameRunning = newState;
         StateHasChanged();  // Request a re-render
+    }
+
+    private void HandleGridToggle(bool newState)
+    {
+        _showGridLines = newState;
+        StateHasChanged();
+    }
+
+    private void HandlePreviousState()
+    {
+        if (!IsGameRunning && _gameBoard.CanUndo())
+        {
+            _gameBoard.UndoLastState();
+        }
+    }
+
+    private void HandleNextState()
+    {
+        if (!_isGameRunning)
+        {
+            _gameBoard.GenerateNextState();
+        }
+    }
+
+    private void HandleReset()
+    {
+        _gameBoard.ResetGame();
+    }
+
+    private void HandleRandomize()
+    {
+        _gameBoard.RandomizeBoard();
     }
 
     [JSInvokable]
@@ -304,6 +391,7 @@
 
     public void Dispose()
     {
+        _gameTimer?.Dispose();
         _objectReference?.Dispose();
     }
 }

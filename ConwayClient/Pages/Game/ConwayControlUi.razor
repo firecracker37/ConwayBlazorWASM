@@ -5,9 +5,24 @@
 
     <div class="ui-elements @(ShowUI ? "show" : "")" id="conwayUIContainer">
         <!-- Example UI element positioned over the canvas -->
-        <button class="play-button button-top-center" @onclick="OnPlayButtonClick">
+        <button class="button-top-center control-button @(IsGameRunning ? "pause-button" : "play-button")" @onclick="OnPlayButtonClick">
             <i class="material-icons">@(IsGameRunning ? "pause" : "play_arrow")</i>
         </button>
+
+        <ul class="ui-menu-buttons @(IsGameRunning ? "ui-menu-hide" : "ui-menu-show")">
+            <li><button class="menu-button"><i class="material-icons" @onclick="OnGridButtonClick">@(ShowGridLines ? "grid_off" : "grid_on")</i></button></li>
+            <li><button class="menu-button"><i class="material-icons" @onclick="OpenSettingsPanel">settings</i></button></li>
+        </ul>
+
+        <button class="button-left-center control-button history-button" disabled="@IsGameRunning" @onclick="OnPreviousStateButtonClick"><i class="material-icons">skip_previous</i></button>
+        <button class="button-right-center control-button history-button" disabled="@IsGameRunning" @onclick="OnNextStateButtonClick"><i class="material-icons">skip_next</i></button>
+        <button class="button-bottom-left control-button reset-button" disabled="@IsGameRunning" @onclick="OnResetButtonClick"><i class="material-icons">settings_backup_restore</i></button>
+        <button class="button-bottom-right control-button randomize-button" disabled="@IsGameRunning" @onclick="OnRandomizeButtonClick"><i class="material-icons">shuffle</i></button>
+
+        <div class="settings-panel @(_showSettingsPanel ? "settings-panel-visable" : "settings-panel-hidden")" id="settingsPanel">
+            <button class="settings-close-button" @onclick="CloseSettingsPanel"><i class="material-icons">close</i></button>
+            <!-- Settings options will be added here -->
+        </div>
     </div>
 </div>
 
@@ -17,7 +32,14 @@
     [Parameter] public bool ShowUI { get; set; }
     [Parameter] public EventCallback<bool> OnUIVisibilityChanged { get; set; }
     [Parameter] public bool IsGameRunning { get; set; }
+    [Parameter] public bool ShowGridLines { get; set; }
     [Parameter] public EventCallback<bool> ToggleGameState { get; set; }
+    [Parameter] public EventCallback<bool> ToggleGridLines { get; set; }
+    [Parameter] public EventCallback OnPreviousState { get; set; }
+    [Parameter] public EventCallback OnNextState { get; set; }
+    [Parameter] public EventCallback OnReset { get; set; }
+    [Parameter] public EventCallback OnRandomize { get; set; }
+    private bool _showSettingsPanel = false;
     private Timer _hideUITimer;
     private DotNetObjectReference<ConwayControlUi> _conwayControlUiReference;
 
@@ -33,6 +55,45 @@
     private void OnPlayButtonClick()
     {
         ToggleGameState.InvokeAsync(!IsGameRunning);  // Toggle the game state
+    }
+
+    private void OnGridButtonClick()
+    {
+        ToggleGridLines.InvokeAsync(!ShowGridLines); // Toggle grid visibility
+    }
+
+    private async Task OnPreviousStateButtonClick()
+    {
+        await OnPreviousState.InvokeAsync(null);
+    }
+
+    private async Task OnNextStateButtonClick()
+    {
+        await OnNextState.InvokeAsync(null);
+    }
+
+    private async Task OnResetButtonClick()
+    {
+        await OnReset.InvokeAsync(null);
+    }
+
+    private async Task OnRandomizeButtonClick()
+    {
+        await OnRandomize.InvokeAsync(null);
+    }
+
+    private void OpenSettingsPanel()
+    {
+        _showSettingsPanel = true;
+        CancelHideUITimer();  // Cancel the UI hide timer since we're interacting with the UI
+        StateHasChanged();  // Request a re-render to apply the changes
+    }
+
+    private void CloseSettingsPanel()
+    {
+        _showSettingsPanel = false;
+        StartHideUITimer();  // Start the UI hide timer since we're done interacting with the UI
+        StateHasChanged();  // Request a re-render to apply the changes
     }
 
     [JSInvokable]

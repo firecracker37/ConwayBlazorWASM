@@ -1,24 +1,189 @@
-﻿.play-button {
-    background-color: #2C3E50;
-    color: #ECF0F1;
-    padding: 1vw 2vw; /* Adjust padding using viewport width */
+﻿.control-button {
+    padding: 1vw 2vw;
     border: none;
-    border-radius: 50%; /* Makes it a circle */
-    font-size: 1.5vw; /* Adjust font size as a percentage of viewport width */
+    border-radius: 50%;
+    font-size: 1.5vw;
     cursor: pointer;
     box-shadow: 0px 2px 4px rgba(0, 0, 0, 0.1);
     transition: background-color 0.3s;
-    width: 10%; /* Set width as a percentage of parent container */
-    height: 10%; /* Maintain aspect ratio */
+    width: 10%;
+    height: 10%;
     display: flex;
     align-items: center;
     justify-content: center;
 }
+    .control-button[disabled] {
+        opacity: 0;
+        transition: opacity 0.3s; /* Smooth transition effect */
+    }
+
+    .control-button:not([disabled]) {
+        opacity: 1;
+        transition: opacity 0.3s; /* Smooth transition effect */
+    }
+
+
+.play-button {
+    background-color: #2ECC71;
+    color: #ECF0F1;
+}
+
+    .play-button:hover {
+        background-color: #27AE60;
+    }
+
+.pause-button {
+    background-color: #E74C3C;
+    color: #ECF0F1;
+}
+
+    .pause-button:hover {
+        background-color: #C0392B;
+    }
+
+.history-button {
+    background-color: #3498DB; /* Blue color */
+    color: #ECF0F1; /* White text */
+}
+
+    .history-button:hover {
+        background-color: #2980B9; /* Slightly darker blue for hover effect */
+    }
+
+.randomize-button {
+    background-color: #F1C40F; /* Bright yellow color */
+    color: #34495E; /* Dark text color for contrast */
+}
+
+    .randomize-button:hover {
+        background-color: #F39C12; /* Slightly darker yellow/orange for hover effect */
+    }
+
+.reset-button {
+    background-color: #E74C3C;
+    color: #ECF0F1;
+}
+
+    .reset-button:hover {
+        background-color: #C0392B;
+    }
 
 .button-top-center {
     position: absolute;
-    top: 2%; /* Adjust based on the desired vertical position */
+    top: 2%;
     left: 50%;
-    transform: translateX(-50%); /* Center the button horizontally */
+    transform: translateX(-50%);
     z-index: 2;
+}
+
+.button-left-center {
+    position: absolute;
+    top: 50%;
+    left: 2%;
+    transform: translateY(-50%);
+    z-index: 2;
+}
+
+.button-right-center {
+    position: absolute;
+    top: 50%;
+    right: 2%;
+    transform: translateY(-50%);
+    z-index: 2;
+}
+
+.button-bottom-left {
+    position: absolute;
+    bottom: 15%; /* Adjust based on desired vertical distance from bottom */
+    left: 25%; /* 1/4 distance from the left for even spacing */
+    transform: translateY(50%);
+    z-index: 2;
+}
+
+.button-bottom-right {
+    position: absolute;
+    bottom: 15%; /* Adjust based on desired vertical distance from bottom */
+    right: 25%; /* 1/4 distance from the right for even spacing */
+    transform: translateY(50%);
+    z-index: 2;
+}
+
+/* Menu Button Styling */
+.ui-menu-buttons {
+    list-style-type: none; /* Remove bullet points */
+    padding: 0; /* Reset padding */
+    margin: 0; /* Reset margin */
+    display: flex; /* Display items in a row */
+    justify-content: left; /* Center items horizontally */
+    gap: 2%;
+    position: absolute; /* Absolute positioning */
+    top: 2%; /* Place it at the top */
+    left: 5%; /* Center it horizontally */
+    
+    z-index: 2; /* Place it above other elements, adjust as needed */
+    transition: opacity 0.3s;
+}
+
+.ui-menu-show {
+    opacity: 1;
+    visibility: visible;
+}
+
+.ui-menu-hide {
+    opacity: 1;
+    visibility: hidden;
+}
+
+    .ui-menu-buttons .menu-button {
+        background-color: transparent;
+        border: 1px solid #F0ECEC; /* Off-white border color */
+        color: #F0ECEC; /* Off-white text color */
+        border-radius: 5px; /* Slightly rounded border */
+        margin: 0 5px; /* Spacing between buttons */
+        padding: 0.5em 1em; /* Padding around text/icon */
+        font-size: 0.8em; /* Smaller font size */
+        cursor: pointer; /* Cursor style on hover */
+        transition: background-color 0.3s, color 0.3s; /* Smooth transition */
+    }
+
+        .ui-menu-buttons .menu-button:hover {
+            background-color: #F0ECEC; /* Off-white background on hover */
+            color: #000; /* White text color on hover */
+        }
+
+/* Settings Panel Styling */
+.settings-panel {
+    position: absolute;
+    top: 10%;
+    left: 10%;
+    width: 80%;
+    height: 80%;
+    background-color: rgba(255, 255, 255, 0.9); /* Semi-transparent white */
+    border: 1px solid #ddd;
+    border-radius: 10px;
+    z-index: 3; /* To ensure it's above other UI elements */
+    overflow: auto; /* In case the content overflows */
+    transition: opacity 0.3s;
+}
+
+.settings-panel-visable {
+    opacity: 1;
+    visibility: visible;
+}
+
+.settings-panel-hidden {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none; /* Make sure the hidden panel doesn't interfere with clicks */
+}
+
+.settings-close-button {
+    position: absolute;
+    top: 2%;
+    right: 2%;
+    background-color: transparent;
+    border: none;
+    cursor: pointer;
+    color: #333;
+    font-size: 1.5em;
 }
