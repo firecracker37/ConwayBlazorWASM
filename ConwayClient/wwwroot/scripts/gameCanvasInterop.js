@@ -87,18 +87,32 @@ window.transferCellContent = () => {
 }
 
 window.toggleUIVisibility = function (elementId) {
-    console.log("Executing toggleUIVisibility on " + elementId);
     let element = document.getElementById(elementId);
     if (element) {
         if (element.classList.contains('show')) {
-            console.log("Removing show class from " + elementId);
             element.classList.remove('show');
         } else {
-            console.log("Adding show class to " + elementId);
             element.classList.add('show');
         }
     }
 }
 
-// Add similar transfer functions for the cell and UI canvases as needed
+window.copyToClipboard = async (text) => {
+    try {
+        await navigator.clipboard.writeText(text);
+        return true;
+    } catch (err) {
+        console.error('Failed to copy to clipboard:', err);
+        return false;
+    }
+};
 
+window.readFromClipboard = async () => {
+    try {
+        const text = await navigator.clipboard.readText();
+        return text;
+    } catch (err) {
+        console.error('Failed to read from clipboard:', err);
+        return null;
+    }
+};

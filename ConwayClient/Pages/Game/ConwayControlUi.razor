@@ -12,6 +12,8 @@
         <ul class="ui-menu-buttons @(IsGameRunning ? "ui-menu-hide" : "ui-menu-show")">
             <li><button class="menu-button"><i class="material-icons" @onclick="OnGridButtonClick">@(ShowGridLines ? "grid_off" : "grid_on")</i></button></li>
             <li><button class="menu-button"><i class="material-icons" @onclick="OpenSettingsPanel">settings</i></button></li>
+            <li><button class="menu-button"><i class="material-icons" @onclick="OnExportButtonClick">cloud_download</i></button></li>
+            <li><button class="menu-button"><i class="material-icons" @onclick="OnImportButtonClick">cloud_upload</i></button></li>
         </ul>
 
         <button class="button-left-center control-button history-button" disabled="@IsGameRunning" @onclick="OnPreviousStateButtonClick"><i class="material-icons">skip_previous</i></button>
@@ -23,7 +25,12 @@
             <button class="settings-close-button" @onclick="CloseSettingsPanel"><i class="material-icons">close</i></button>
             <!-- Settings options will be added here -->
         </div>
+
+        <div class="message-display-panel @(_showMessageDisplayPanel ? "message-display-panel-visable" : "message-display-panel-hidden") @_messageDisplayLevel">
+            <p>@_messageDisplayText</p>
+        </div>
     </div>
+
 </div>
 
 @code {
@@ -39,7 +46,14 @@
     [Parameter] public EventCallback OnNextState { get; set; }
     [Parameter] public EventCallback OnReset { get; set; }
     [Parameter] public EventCallback OnRandomize { get; set; }
+    [Parameter] public Func<bool, Task<bool>> OnExportState { get; set; }
+    [Parameter] public Func<bool, Task<bool>> OnImportState { get; set; }
+
     private bool _showSettingsPanel = false;
+    private bool _showMessageDisplayPanel = false;
+    private Timer _hideMessageDisplayPanel;
+    private string _messageDisplayText;
+    private string _messageDisplayLevel;
     private Timer _hideUITimer;
     private DotNetObjectReference<ConwayControlUi> _conwayControlUiReference;
 
@@ -61,6 +75,33 @@
     {
         ToggleGridLines.InvokeAsync(!ShowGridLines); // Toggle grid visibility
     }
+
+    private async Task OnExportButtonClick()
+    {
+        var success = await OnExportState.Invoke(true);
+        if (success)
+        {
+            DisplayMessageSuccess("State successfully exported to clipboard.");
+        }
+        else
+        {
+            DisplayMessageFail("Failed to export game state.");
+        }
+    }
+
+    private async Task OnImportButtonClick()
+    {
+        var success = await OnImportState.Invoke(true);
+        if (success)
+        {
+            DisplayMessageSuccess("State successfully imported from clipboard.");
+        }
+        else
+        {
+            DisplayMessageFail("Failed to import game state.");
+        }
+    }
+
 
     private async Task OnPreviousStateButtonClick()
     {
@@ -85,15 +126,48 @@
     private void OpenSettingsPanel()
     {
         _showSettingsPanel = true;
-        CancelHideUITimer();  // Cancel the UI hide timer since we're interacting with the UI
         StateHasChanged();  // Request a re-render to apply the changes
     }
 
     private void CloseSettingsPanel()
     {
         _showSettingsPanel = false;
-        StartHideUITimer();  // Start the UI hide timer since we're done interacting with the UI
         StateHasChanged();  // Request a re-render to apply the changes
+    }
+    private void DisplayMessageSuccess(string message)
+    {
+        DisplayMessage(message, "message-success");
+    }
+
+    private void DisplayMessageFail(string message)
+    {
+        DisplayMessage(message, "message-fail");
+    }
+
+    private void DisplayMessage(string message, string level)
+    {
+        _messageDisplayText = message;
+        _messageDisplayLevel = level;
+        _showMessageDisplayPanel = true;
+        StartHideMessageTimer();
+    }
+
+    private void StartHideMessageTimer()
+    {
+        // If there's an existing timer, dispose of it first.
+        _hideMessageDisplayPanel?.Dispose();
+
+        // Start a new timer that will elapse after three seconds.
+        _hideMessageDisplayPanel = new Timer(HideMessageAfterDelay, null, 3000, Timeout.Infinite);
+    }
+
+    private void HideMessageAfterDelay(object state)
+    {
+        InvokeAsync(() =>
+        {
+            _showMessageDisplayPanel = false;
+            StateHasChanged();
+        });
     }
 
     [JSInvokable]
@@ -108,6 +182,7 @@
 
     private void HideUIAfterDelay(object state)
     {
+        if (_showSettingsPanel || _showMessageDisplayPanel) return;
         InvokeAsync(() =>
         {
             ShowUI = false;
@@ -127,6 +202,6 @@
     {
         _conwayControlUiReference?.Dispose();
         _hideUITimer?.Dispose();
+        _hideMessageDisplayPanel.Dispose();
     }
-}
 }

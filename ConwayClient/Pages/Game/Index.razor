@@ -1,10 +1,12 @@
 ﻿@page "/"
 @layout Layout
 @inject IJSRuntime JSRuntime
-@using ConwayClient.Models;
+@inject ISaveService SaveService
+@using ConwayClient.Models
+@using ConwayClient.Services
 @using Blazor.Extensions.Canvas.Canvas2D
 @using Blazor.Extensions.Canvas
-@using Blazor.Extensions;
+@using Blazor.Extensions
 
 <div class="game-container blue-grey darken-1" style="width: 100%; max-width: 100%;">
     <div class="header white-text">
@@ -21,7 +23,9 @@
                          OnPreviousState="HandlePreviousState"
                          OnNextState="HandleNextState"
                          OnReset="HandleReset"
-                         OnRandomize="HandleRandomize">
+                         OnRandomize="HandleRandomize"
+                         OnExportState="HandleExportState"
+                         OnImportState="HandleImportState">
             <BECanvas Width="@canvasSize" Height="@canvasSize" @ref="_canvasReference"></BECanvas>
             <div style="display: none">
                 <BECanvas Width="@offscreenCanvasSize" Height="@offscreenCanvasSize" @ref="_bufferCanvasReference"></BECanvas>
@@ -61,7 +65,6 @@
     private int CellWidth => CanvasWidth / Columns;
     private int CellHeight => CanvasHeight / Rows;
 
-    private string gameState = string.Empty;
     private bool _showGridLines { get; set; } = false;
 
     private DateTime _lastFrameTime;
@@ -249,7 +252,6 @@
         try
         {
             double scaleFactor = (double)canvasSize / (int)offscreenCanvasSize;
-            Console.WriteLine($"Scale Factor: {scaleFactor}");
             await _canvasContext.ClearRectAsync(0, 0, canvasSize, canvasSize);
             await _canvasContext.DrawImageAsync(
                 _bufferCanvasReference.CanvasReference,
@@ -285,12 +287,22 @@
         _isGameRunning = false;
     }
 
+    public string SaveGameState()
+    {
+        string gameState = SaveService.Save(_gameBoard);
+        return gameState;
+    }
+
+    public void LoadGameState(string newState)
+    {
+        _gameBoard = SaveService.Load(newState, Rows, Columns);
+    }
+
     [JSInvokable]
     public async Task HandleCanvasInteraction()
     {
         try
         {
-            Console.WriteLine("Showing UI from Index");
             _showUI = true;
             StateHasChanged();  // Notify Blazor to re-render the component
         }
@@ -364,11 +376,63 @@
     }
 
     [JSInvokable]
+    private async Task<bool> HandleExportState(bool dummy)
+    {
+        try
+        {
+            var base64 = SaveGameState();
+            if (string.IsNullOrEmpty(base64))
+            {
+                Console.WriteLine("Failed to get save state from _gameBoard");
+                return false;
+            }
+            else
+            {
+                var success = await JSRuntime.InvokeAsync<bool>("copyToClipboard", base64);
+                if (success)
+                {
+                    Console.WriteLine("Save state coppied to clipboard");
+                }
+                return success;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Failed to export game state. Message: {ex}");
+            return false;
+        }
+    }
+
+    [JSInvokable]
+    private async Task<bool> HandleImportState(bool dummy)
+    {
+        try
+        {
+            var base64 = await JSRuntime.InvokeAsync<string>("readFromClipboard");
+            if (string.IsNullOrEmpty(base64))
+            {
+                Console.WriteLine("Failed to retrieve content from clipboard");
+                return false;
+            }
+            else
+            {
+                LoadGameState(base64);
+                Console.WriteLine("Gamestate loaded from clipboard");
+                return true;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Failed to export game state. Message: {ex}");
+            return false;
+        }
+    }
+
+    [JSInvokable]
     public async Task OnWindowResize()
     {
         try
         {
-            Console.WriteLine("Window Resized");
             // Fetch the device's viewport width
             var viewportWidth = await JSRuntime.InvokeAsync<double>("getInnerWidth");
 
