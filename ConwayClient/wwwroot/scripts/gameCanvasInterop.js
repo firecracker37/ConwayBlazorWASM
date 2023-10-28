@@ -30,16 +30,25 @@ window.addMainCanvasClickListener = (dotnetHelper) => {
     }
 };
 
-// Add mouse and touch listeners to the main canvas
-window.addCanvasInteractionListener = (dotnetHelper) => {
+window.addIndexCanvasInteractionListener = (dotnetHelper) => {
     const canvases = document.querySelectorAll('canvas');
-    const mainCanvas = canvases[0]; // Assuming the main canvas is the first
+    const mainCanvas = canvases[0];
     if (mainCanvas) {
         mainCanvas.addEventListener('mousemove', () => {
             dotnetHelper.invokeMethodAsync('HandleCanvasInteraction');
         });
         mainCanvas.addEventListener('touchstart', () => {
             dotnetHelper.invokeMethodAsync('HandleCanvasInteraction');
+        });
+    }
+};
+
+window.addConwayControlUiListener = (conwayControlUiReference) => {
+    const canvases = document.querySelectorAll('canvas');
+    const mainCanvas = canvases[0];
+    if (mainCanvas) {
+        mainCanvas.addEventListener('touchend', () => {
+            conwayControlUiReference.invokeMethodAsync('StartHideUITimer');
         });
     }
 };

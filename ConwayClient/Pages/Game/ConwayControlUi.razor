@@ -1,9 +1,13 @@
-﻿<div class="ui-container" style="width: @CanvasSize; height: @CanvasSize;">
+﻿@inject IJSRuntime JSRuntime
+
+<div class="ui-container" style="width: @CanvasSize; height: @CanvasSize;" @onmouseleave="StartHideUITimer">
     @ChildContent
 
-    <div class="ui-elements" id="conwayUIContainer">
+    <div class="ui-elements @(ShowUI ? "show" : "")" id="conwayUIContainer">
         <!-- Example UI element positioned over the canvas -->
-        <button class="play-button button-top-center"><i class="material-icons">play_arrow</i></button>
+        <button class="play-button button-top-center" @onclick="OnPlayButtonClick">
+            <i class="material-icons">@(IsGameRunning ? "pause" : "play_arrow")</i>
+        </button>
     </div>
 </div>
 
@@ -11,17 +15,57 @@
     [Parameter] public RenderFragment ChildContent { get; set; }
     [Parameter] public int CanvasSize { get; set; }
     [Parameter] public bool ShowUI { get; set; }
-    [Parameter] public Func<Task> OnHideRequest { get; set; }
+    [Parameter] public EventCallback<bool> OnUIVisibilityChanged { get; set; }
+    [Parameter] public bool IsGameRunning { get; set; }
+    [Parameter] public EventCallback<bool> ToggleGameState { get; set; }
+    private Timer _hideUITimer;
+    private DotNetObjectReference<ConwayControlUi> _conwayControlUiReference;
 
-
-    private bool _persistUI = false;
-
-    private async Task RequestHideUI()
+    protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (OnHideRequest != null)
+        if (firstRender)
         {
-            await OnHideRequest.Invoke();
+            _conwayControlUiReference = DotNetObjectReference.Create(this);
+            await JSRuntime.InvokeVoidAsync("addConwayControlUiListener", _conwayControlUiReference);
         }
     }
 
+    private void OnPlayButtonClick()
+    {
+        ToggleGameState.InvokeAsync(!IsGameRunning);  // Toggle the game state
+    }
+
+    [JSInvokable]
+    public void StartHideUITimer()
+    {
+        // If there's an existing timer, dispose of it first.
+        _hideUITimer?.Dispose();
+
+        // Start a new timer that will elapse after one second.
+        _hideUITimer = new Timer(HideUIAfterDelay, null, 1000, Timeout.Infinite);
+    }
+
+    private void HideUIAfterDelay(object state)
+    {
+        InvokeAsync(() =>
+        {
+            ShowUI = false;
+            OnUIVisibilityChanged.InvokeAsync(ShowUI); // Notify the parent component
+        });
+    }
+
+    // Call this method if any interaction happens within the one-second timer.
+    private void CancelHideUITimer()
+    {
+        _hideUITimer?.Dispose();
+        _hideUITimer = null;
+    }
+
+    // Don't forget to dispose of the timer when the component is disposed to avoid memory leaks.
+    public void Dispose()
+    {
+        _conwayControlUiReference?.Dispose();
+        _hideUITimer?.Dispose();
+    }
+}
 }
