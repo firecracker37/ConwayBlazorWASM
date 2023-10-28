@@ -1,0 +1,27 @@
+﻿<div class="ui-container" style="width: @CanvasSize; height: @CanvasSize;">
+    @ChildContent
+
+    <div class="ui-elements" id="conwayUIContainer">
+        <!-- Example UI element positioned over the canvas -->
+        <button class="play-button button-top-center"><i class="material-icons">play_arrow</i></button>
+    </div>
+</div>
+
+@code {
+    [Parameter] public RenderFragment ChildContent { get; set; }
+    [Parameter] public int CanvasSize { get; set; }
+    [Parameter] public bool ShowUI { get; set; }
+    [Parameter] public Func<Task> OnHideRequest { get; set; }
+
+
+    private bool _persistUI = false;
+
+    private async Task RequestHideUI()
+    {
+        if (OnHideRequest != null)
+        {
+            await OnHideRequest.Invoke();
+        }
+    }
+
+}

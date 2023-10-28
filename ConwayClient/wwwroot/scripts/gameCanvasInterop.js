@@ -77,14 +77,17 @@ window.transferCellContent = () => {
     }
 }
 
-// Transfers content from the UI canvas to the main canvas
-window.transferUiContent = () => {
-    const canvases = document.querySelectorAll('canvas');
-    const mainCanvas = canvases[0];
-    const UiCanvas = canvases[2];
-    if (mainCanvas && UiCanvas) {
-        const mainContext = mainCanvas.getContext('2d');
-        mainContext.drawImage(UiCanvas, 0, 0);
+window.toggleUIVisibility = function (elementId) {
+    console.log("Executing toggleUIVisibility on " + elementId);
+    let element = document.getElementById(elementId);
+    if (element) {
+        if (element.classList.contains('show')) {
+            console.log("Removing show class from " + elementId);
+            element.classList.remove('show');
+        } else {
+            console.log("Adding show class to " + elementId);
+            element.classList.add('show');
+        }
     }
 }
 
