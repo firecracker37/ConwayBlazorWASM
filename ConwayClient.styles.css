@@ -140,7 +140,7 @@ main[b-rcmx4iv9mx] {
 }
 
     .ui-menu-buttons .menu-button[b-erdjymlio5] {
-        background-color: transparent;
+        background-color: rgba(0,0,0, 0.4);
         border: 1px solid #F0ECEC; /* Off-white border color */
         color: #F0ECEC; /* Off-white text color */
         border-radius: 5px; /* Slightly rounded border */
@@ -182,6 +182,14 @@ main[b-rcmx4iv9mx] {
     pointer-events: none; /* Make sure the hidden panel doesn't interfere with clicks */
 }
 
+.settings-title[b-erdjymlio5] {
+    font-size: 1.5em; /* Adjust as needed */
+    font-weight: bold;
+    margin-left: 2%; /* Padding from the left edge */
+    margin-top: 1%; /* Padding from the top edge */
+    display: inline-block; /* Keeps it inline with the close button */
+}
+
 .settings-close-button[b-erdjymlio5] {
     position: absolute;
     top: 2%;
@@ -191,6 +199,44 @@ main[b-rcmx4iv9mx] {
     cursor: pointer;
     color: #333;
     font-size: 1.5em;
+}
+
+/* Color Picker Elements Styles */
+.color-picker-select[b-erdjymlio5] {
+    width: 100%;
+    padding: 0.5em;
+    font-size: 1rem;
+    margin-bottom: 1em;
+    border: 1px solid #D3D3D3;
+    border-radius: 5px;
+    z-index: 6;
+}
+
+.color-picker-container[b-erdjymlio5] {
+    margin: 5% auto; /* Adds a margin to the top and bottom, centers horizontally */
+    max-width: 500px; /* Limiting the width for larger screens */
+}
+
+.color-picker-item[b-erdjymlio5] {
+    display: flex;
+    align-items: center;
+    justify-content: space-between; /* Evenly distribute space */
+    background-color: rgba(240, 240, 240, 0.8); /* Light background for better readability */
+    border-radius: 5px; /* Rounded corners */
+    padding: 0.5em; /* Padding around the content */
+    margin-bottom: 1em; /* Space between items */
+}
+
+.color-label[b-erdjymlio5] {
+    font-size: 1.1rem; /* Slightly larger font */
+    flex: 1; /* Ensures the label takes up as much space as possible */
+    margin-right: 1em; /* Adds a gap between label and input */
+}
+
+.color-input[b-erdjymlio5] {
+    flex-shrink: 0; /* Ensures the input doesn't shrink */
+    cursor: pointer;
+    border-radius: 5px; /* Rounded corners for consistency */
 }
 
 /* Message Display Panel Styles */
