@@ -7,6 +7,7 @@ namespace ConwayClient.Models
 {
     public class GameBoard
     {
+        private object _stateLock = new object();
         public int Rows => _currentState.Rows;
         public int Columns => _currentState.Columns;
 
@@ -27,7 +28,7 @@ namespace ConwayClient.Models
             _deadCells = new List<CellPosition>();
         }
 
-        public void UpdateState(GameState newState)
+        public void UpdateState(GameState newState, bool addToHistory = true)
         {
             // Determine the born and dead cells by comparing _currentState and newState
             _bornCells.Clear();
@@ -49,7 +50,10 @@ namespace ConwayClient.Models
             }
 
             // Save the old state to the history before updating to the new one
-            _historyManager.AddToHistory(_currentState);
+            if (addToHistory)
+            {
+                _historyManager.AddToHistory(_currentState);
+            }
 
             _currentState = newState;  // Update the current state to the new state
             _stateUpdated = true;      // Indicate that the state has been updated
@@ -67,23 +71,26 @@ namespace ConwayClient.Models
 
         public void GenerateNextState()
         {
-            var totalStopwatch = Stopwatch.StartNew();
+            lock (_stateLock)
+            {
+                var totalStopwatch = Stopwatch.StartNew();
 
-            // Use StateTransformer to get the new state
-            var newState = _stateTransformer.GenerateNextState(_currentState);
+                // Use StateTransformer to get the new state
+                var newState = _stateTransformer.GenerateNextState(_currentState);
 
-            UpdateState(newState);
-
-            totalStopwatch.Stop();
-            Console.WriteLine($"Total time taken: {totalStopwatch.Elapsed.TotalMilliseconds} ms");
+                UpdateState(newState);
+            }
         }
 
         public void UndoLastState()
         {
-            if (_historyManager.IsHistoryEmpty) return;
-            var lastState = _historyManager.UndoLastState();
+            lock (_stateLock)
+            {
+                if (_historyManager.IsHistoryEmpty) return;
+                var lastState = _historyManager.UndoLastState();
 
-            UpdateState(lastState);
+                UpdateState(lastState, false);
+            }
         }
 
         public bool CanUndo()

@@ -2,6 +2,7 @@
 @layout Layout
 @inject IJSRuntime JSRuntime
 @inject ISaveService SaveService
+@using System.Threading
 @using ConwayClient.Models
 @using ConwayClient.Services
 @using Blazor.Extensions.Canvas.Canvas2D
@@ -17,9 +18,9 @@
                          ShowUI="@_showUI"
                          OnUIVisibilityChanged="ToggleUIVisibility"
                          IsGameRunning="@_isGameRunning"
-                         ShowGridLines = "@_showGridLines"
+                         ShowGridLines="@_showGridLines"
                          ToggleGameState="HandleGameToggle"
-                         ToggleGridLines ="HandleGridToggle"
+                         ToggleGridLines="HandleGridToggle"
                          OnPreviousState="HandlePreviousState"
                          OnNextState="HandleNextState"
                          OnReset="HandleReset"
@@ -47,13 +48,12 @@
     private Canvas2DContext _cellCanvasContext;
 
     private DotNetObjectReference<Index> _objectReference;
-    private GameBoard _gameBoard;
-    private Timer _gameTimer;
+    private GameBoard _gameBoard = null;
+    private System.Threading.Timer _gameTimer = null;
 
     private bool _isGameRunning = false;
     public bool IsGameRunning => _isGameRunning;
     private bool _showUI = false;
-    private int _frameCount = 0;  // Frame counter
 
     public int Rows { get; set; } = 128;
     public int Columns { get; set; } = 128;
@@ -151,6 +151,11 @@
     {
         try
         {
+            if (_gameBoard == null) return;
+            var currentTime = DateTime.UtcNow;
+            var timeSinceLastFrame = (currentTime - _lastFrameTime).TotalSeconds;
+            if (timeSinceLastFrame < DesiredFrameTime) return;
+
             // Update individual canvas elements
             await Update();
 
@@ -159,6 +164,8 @@
 
             // Composite the buffer canvas onto the main canvas
             await CompositeCanvases();
+
+            _lastFrameTime = currentTime;
         }
         catch (Exception ex)
         {
@@ -267,12 +274,22 @@
 
     public void StartGame()
     {
-        if (_isGameRunning) return;
 
-        _gameTimer = new Timer(_ =>
+        if (_isGameRunning)
+        {
+            return;
+        }
+
+        // Dispose of the existing timer, if there's one
+        if (_gameTimer != null)
+        {
+            _gameTimer.Dispose();
+        }
+
+        _gameTimer = new System.Threading.Timer(state =>
         {
             _gameBoard.GenerateNextState(); // Directly generate the next game state
-        }, null, 0, 500);  // Adjust the interval as needed
+        }, null, 0, _gameUpdateInterval);  // Adjust the interval as needed
 
         _isGameRunning = true;
     }
@@ -335,11 +352,16 @@
     private void HandleGameToggle(bool newState)
     {
         if (_isGameRunning)
+        {
             PauseGame();
+        }
         else
+        {
             StartGame();
+        }
 
         _isGameRunning = newState;
+
         StateHasChanged();  // Request a re-render
     }
 

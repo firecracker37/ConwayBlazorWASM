@@ -66,7 +66,7 @@ namespace ConwaysGameOfLife.Core
             }
 
             totalStopwatch.Stop();
-            Console.WriteLine($"Total time taken: {totalStopwatch.Elapsed.TotalMilliseconds} ms");
+            Console.WriteLine($"(StateTransformer): Total time taken: {totalStopwatch.Elapsed.TotalMilliseconds} ms");
 
             return nextState;
         }
