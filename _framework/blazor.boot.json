@@ -9,8 +9,8 @@
     "assembly": {
       "Blazor.Extensions.Canvas.dll": "sha256-W20pWMXQg2yTv0w4VJhrjCJKNRYe3PiUU9S76XipNe8=",
       "Blazor.Extensions.Canvas.JS.dll": "sha256-TrW1uaSNUS+J8xVJErxIf1NQuNC7kn50KzMYYF\/4JtM=",
-      "ConwayClient.dll": "sha256-34m9uP92WBmMdzogtMwcDtI\/++IuC+NiTc5IolT6bG0=",
-      "ConwaysGameOfLife.dll": "sha256-uLPUZ5p+GfklL2bxgf6h1J48FmFnh\/8MlhvSZ\/fhbC4=",
+      "ConwayClient.dll": "sha256-Jo2jyyknvzhpmymnMVdtx3ndaToyBBNc8p7fnlN7x3I=",
+      "ConwaysGameOfLife.dll": "sha256-MOxKTIF\/7IOWoZ3xO\/dw+Uu2zlEv8H2H1XSE5+n5vqg=",
       "K4os.Compression.LZ4.dll": "sha256-qcgzXahbDrLGPOsNw7itZ1xPkzDGI0CqMmGpz03hBBM=",
       "Microsoft.AspNetCore.Components.dll": "sha256-kVyDJix2qP55V1M6LA36TrvaWDf0U\/feB\/QiLIcR9+E=",
       "Microsoft.AspNetCore.Components.Web.dll": "sha256-TRr05jMZzrANB34c8na6dFxTc2vRq+oanVac1I7\/GIc=",
@@ -43,7 +43,7 @@
       "System.Runtime.InteropServices.JavaScript.dll": "sha256-lJ8uw1Zau6XEAAMX4EFqm8eIs9zNHx6Kt+K4KwMX\/iI=",
       "System.Text.Encodings.Web.dll": "sha256-cO\/W3bKcnHud2Z3v6bWFgRiXK3ju19iYodf6wDIn6m4=",
       "System.Text.Json.dll": "sha256-e6YVzc7cG7X8rab0qiiGYAkc1zE\/39gcjzO\/tbh1ZmQ=",
-      "System.Threading.dll": "sha256-KF4RKTmUJbrXd3nh\/IW2HKHwWKdpy+r0Oqqerjk7+KU="
+      "System.Threading.dll": "sha256-mKdBfBRKho993PgJsbjrz590w2nWnl1G6LGyxCiTQ3o="
     },
     "extensions": null,
     "lazyAssembly": null,
