@@ -26,7 +26,10 @@
                          OnReset="HandleReset"
                          OnRandomize="HandleRandomize"
                          OnExportState="HandleExportState"
-                         OnImportState="HandleImportState">
+                         OnImportState="HandleImportState"
+                         @bind-DeadCellColor="@DeadCellColor" 
+                         @bind-AliveCellColor="@AliveCellColor"
+                         @bind-GridLineColor="@GridLineColor">
             <BECanvas Width="@canvasSize" Height="@canvasSize" @ref="_canvasReference"></BECanvas>
             <div style="display: none">
                 <BECanvas Width="@offscreenCanvasSize" Height="@offscreenCanvasSize" @ref="_bufferCanvasReference"></BECanvas>
@@ -64,6 +67,49 @@
     private int CanvasHeight => (int)canvasSize;
     private int CellWidth => CanvasWidth / Columns;
     private int CellHeight => CanvasHeight / Rows;
+
+    private string _deadCellColor = "#424242";
+    public string DeadCellColor
+    {
+        get => _deadCellColor;
+        set
+        {
+            if (_deadCellColor != value)
+            {
+                _deadCellColor = value;
+                OnDeadCellColorChanged(); // Call a method when the value changes
+            }
+        }
+    }
+
+    private string _aliveCellColor = "#1a237e";
+    public string AliveCellColor
+    {
+        get => _aliveCellColor;
+        set
+        {
+            if (_aliveCellColor != value)
+            {
+                _aliveCellColor = value;
+                Task.Run(() => UpdateAliveCellsColor()); // Update the color of alive cells on the canvas
+            }
+        }
+    }
+
+    private string _gridLineColor = "#bdbdbd";
+    public string GridLineColor
+    {
+        get => _gridLineColor;
+        set
+        {
+            if (_gridLineColor != value)
+            {
+                _gridLineColor = value;
+                Task.Run(() => OnGridLineColorChangedAsync()); // Call a method when the value changes
+            }
+        }
+    }
+
 
     private bool _showGridLines { get; set; } = false;
 
@@ -122,7 +168,7 @@
     private async Task DrawGridLines(Canvas2DContext context, int canvasWidth, int canvasHeight, int cellWidth, int cellHeight)
     {
         await context.BeginBatchAsync();
-        await context.SetStrokeStyleAsync("#bdbdbd");
+        await context.SetStrokeStyleAsync(_gridLineColor);
 
         // Drawing horizontal lines
         for (int y = 0; y <= canvasHeight; y += cellHeight)
@@ -199,7 +245,7 @@
                 var deadCells = _gameBoard.GetDeadCells();
 
                 // Draw all newly born cells
-                await _cellCanvasContext.SetFillStyleAsync("#1a237e"); // Alive cell color
+                await _cellCanvasContext.SetFillStyleAsync(_aliveCellColor); // Alive cell color
                 foreach (var cell in bornCells)
                 {
                     await _cellCanvasContext.FillRectAsync(cell.Col * CellWidth, cell.Row * CellHeight, CellWidth, CellHeight);
@@ -238,7 +284,7 @@
         try
         {
             // Fill buffer with dead cell color
-            await _bufferCanvasContext.SetFillStyleAsync("#424242");
+            await _bufferCanvasContext.SetFillStyleAsync(_deadCellColor);
             await _bufferCanvasContext.FillRectAsync(0, 0, (int)offscreenCanvasSize, (int)offscreenCanvasSize);
 
             // Overlay live cells from cellCanvasContext onto bufferCanvasContext
@@ -447,6 +493,48 @@
         {
             Console.WriteLine($"Failed to export game state. Message: {ex}");
             return false;
+        }
+    }
+
+    private void OnDeadCellColorChanged()
+    {
+        // Add additional logic here if needed
+    }
+
+    private void OnAliveCellColorChanged()
+    {
+        // Add additional logic here if needed
+    }
+
+    private async Task OnGridLineColorChangedAsync()
+    {
+        await DrawGridLines(_gridCanvasContext, CanvasWidth, CanvasHeight, CellWidth, CellHeight);
+    }
+
+    private async Task UpdateAliveCellsColor()
+    {
+        try
+        {
+            var aliveCells = _gameBoard.GetAliveCells();
+
+            // Begin drawing on the canvas
+            await _cellCanvasContext.BeginBatchAsync();
+
+            // Set the new fill style
+            await _cellCanvasContext.SetFillStyleAsync(_aliveCellColor); // Alive cell color
+
+            // Draw over all alive cells with the new color
+            foreach (var cell in aliveCells)
+            {
+                await _cellCanvasContext.FillRectAsync(cell.Col * CellWidth, cell.Row * CellHeight, CellWidth, CellHeight);
+            }
+
+            // End drawing on the canvas
+            await _cellCanvasContext.EndBatchAsync();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error during UpdateAliveCellsColor method: {ex.Message}");
         }
     }
 

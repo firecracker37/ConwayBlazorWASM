@@ -22,8 +22,39 @@
         <button class="button-bottom-right control-button randomize-button" disabled="@IsGameRunning" @onclick="OnRandomizeButtonClick"><i class="material-icons">shuffle</i></button>
 
         <div class="settings-panel @(_showSettingsPanel ? "settings-panel-visable" : "settings-panel-hidden")" id="settingsPanel">
+            <div class="settings-title">Settings</div>
             <button class="settings-close-button" @onclick="CloseSettingsPanel"><i class="material-icons">close</i></button>
             <!-- Settings options will be added here -->
+
+            <div class="color-picker-container">
+                <div class="color-picker-item">
+                    <label>
+                        Theme:
+
+                        <select class="browser-default color-picker-select" @bind="SelectedTheme">
+                            @foreach (var theme in Themes.Keys)
+                            {
+                                <option @key="@theme" name="@theme" value="@theme">@theme</option>
+                            }
+                        </select>
+                    </label>
+                </div>
+                <div class="color-picker-item">
+                    <label class="color-label">Dead Cell Color:</label>
+                    <input class="color-input" type="color" value="@DeadCellColor" @oninput="UpdateDeadCellColor" />
+                </div>
+
+                <div class="color-picker-item">
+                    <label class="color-label">Alive Cell Color:</label>
+                    <input class="color-input" type="color" value="@AliveCellColor" @oninput="UpdateAliveCellColor" />
+                </div>
+
+                <div class="color-picker-item">
+                    <label class="color-label">Grid Line Color:</label>
+                    <input class="color-input" type="color" value="@GridLineColor" @oninput="UpdateGridLineColor" />
+                </div>
+            </div>
+
         </div>
 
         <div class="message-display-panel @(_showMessageDisplayPanel ? "message-display-panel-visable" : "message-display-panel-hidden") @_messageDisplayLevel">
@@ -34,20 +65,44 @@
 </div>
 
 @code {
-    [Parameter] public RenderFragment ChildContent { get; set; }
-    [Parameter] public int CanvasSize { get; set; }
-    [Parameter] public bool ShowUI { get; set; }
-    [Parameter] public EventCallback<bool> OnUIVisibilityChanged { get; set; }
-    [Parameter] public bool IsGameRunning { get; set; }
-    [Parameter] public bool ShowGridLines { get; set; }
-    [Parameter] public EventCallback<bool> ToggleGameState { get; set; }
-    [Parameter] public EventCallback<bool> ToggleGridLines { get; set; }
-    [Parameter] public EventCallback OnPreviousState { get; set; }
-    [Parameter] public EventCallback OnNextState { get; set; }
-    [Parameter] public EventCallback OnReset { get; set; }
-    [Parameter] public EventCallback OnRandomize { get; set; }
-    [Parameter] public Func<bool, Task<bool>> OnExportState { get; set; }
-    [Parameter] public Func<bool, Task<bool>> OnImportState { get; set; }
+        [Parameter] public RenderFragment ChildContent { get; set; }
+        [Parameter] public int CanvasSize { get; set; }
+        [Parameter] public bool ShowUI { get; set; }
+        [Parameter] public EventCallback<bool> OnUIVisibilityChanged { get; set; }
+        [Parameter] public bool IsGameRunning { get; set; }
+        [Parameter] public bool ShowGridLines { get; set; }
+        [Parameter] public EventCallback<bool> ToggleGameState { get; set; }
+        [Parameter] public EventCallback<bool> ToggleGridLines { get; set; }
+        [Parameter] public EventCallback OnPreviousState { get; set; }
+        [Parameter] public EventCallback OnNextState { get; set; }
+        [Parameter] public EventCallback OnReset { get; set; }
+        [Parameter] public EventCallback OnRandomize { get; set; }
+        [Parameter] public Func<bool, Task<bool>> OnExportState { get; set; }
+        [Parameter] public Func<bool, Task<bool>> OnImportState { get; set; }
+
+        [Parameter] public string DeadCellColor { get; set; }
+        [Parameter] public string AliveCellColor { get; set; }
+        [Parameter] public string GridLineColor { get; set; }
+        [Parameter] public EventCallback<string> DeadCellColorChanged { get; set; }
+        [Parameter] public EventCallback<string> AliveCellColorChanged { get; set; }
+        [Parameter] public EventCallback<string> GridLineColorChanged { get; set; }
+        //[Parameter] public EventCallback<string> SelectedThemeChanged { get; set; }
+
+    private string _selectedTheme = "Default Theme";
+    public string SelectedTheme
+    {
+        get => _selectedTheme;
+        set
+        {
+            _selectedTheme = value;
+            SetColorsFromTheme(_selectedTheme);
+
+            // Manually invoke the methods to propagate the color changes
+            UpdateDeadCellColor(new ChangeEventArgs { Value = DeadCellColor });
+            UpdateAliveCellColor(new ChangeEventArgs { Value = AliveCellColor });
+            UpdateGridLineColor(new ChangeEventArgs { Value = GridLineColor });
+        }
+    }
 
     private bool _showSettingsPanel = false;
     private bool _showMessageDisplayPanel = false;
@@ -134,6 +189,57 @@
         _showSettingsPanel = false;
         StateHasChanged();  // Request a re-render to apply the changes
     }
+
+    private async Task UpdateDeadCellColor(ChangeEventArgs e)
+    {
+        DeadCellColor = e.Value.ToString();
+        await DeadCellColorChanged.InvokeAsync(DeadCellColor);
+        Console.WriteLine($"Updating DeadCellColor to {DeadCellColor}");
+    }
+
+    private async Task UpdateAliveCellColor(ChangeEventArgs e)
+    {
+        AliveCellColor = e.Value.ToString();
+        await AliveCellColorChanged.InvokeAsync(AliveCellColor);
+        Console.WriteLine($"Updating AliveCellColor to {AliveCellColor}");
+    }
+
+    private async Task UpdateGridLineColor(ChangeEventArgs e)
+    {
+        GridLineColor = e.Value.ToString();
+        await GridLineColorChanged.InvokeAsync(GridLineColor);
+        Console.WriteLine($"Updating GridLineColor to {GridLineColor}");
+    }
+
+    private void SetColorsFromTheme(string themeName)
+    {
+        if (Themes.ContainsKey(themeName))
+        {
+            var themeColors = Themes[themeName];
+            DeadCellColor = themeColors.DeadCellColor;
+            AliveCellColor = themeColors.AliveCellColor;
+            GridLineColor = themeColors.GridLineColor;
+        }
+    }
+
+    private readonly Dictionary<string, (string DeadCellColor, string AliveCellColor, string GridLineColor)> Themes = new()
+    {
+        { "Default Theme", ("#424242", "#1a237e", "#bdbdbd") },
+        { "Classic Light Theme", ("#F5E9D3", "#808080", "#B0B0B0") }, // Eggshell white, Medium gray, Contrasting gray
+        { "Classic Dark Theme", ("#808080", "#F5E9D3", "#696969") },  // Medium gray, Eggshell white, Dark gray
+
+        { "Sunset", ("#FFDAB9", "#FF4500", "#000000") },  // "#FF6347"
+        { "Ocean Breeze", ("#AFEEEE", "#4682B4", "#B0C4DE") },
+        { "Forest Walk", ("#8FBC8F", "#228B22", "#90EE90") },
+        { "Desert Sands", ("#FFF0AC", "#D2B48C", "#F4A460") },
+        { "Winter Night", ("#191970", "#4682B4", "#708090") },
+        { "Spring Blossom", ("#FFB6C1", "#FF69B4", "#FFC0CB") },
+        { "Mystic Purple", ("#8A2BE2", "#9400D3", "#9932CC") },
+        { "Calm Neutrals", ("#D3D3D3", "#A9A9A9", "#778899") },
+        { "Golden Hour", ("#FFD700", "#FFA500", "#FF8C00") },
+        { "Twilight Blue", ("#ADD8E6", "#00008B", "#0000CD") }
+    };
+
     private void DisplayMessageSuccess(string message)
     {
         DisplayMessage(message, "message-success");
