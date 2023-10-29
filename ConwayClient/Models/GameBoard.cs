@@ -98,6 +98,10 @@ namespace ConwayClient.Models
             return !_historyManager.IsHistoryEmpty;
         }
 
+        public IEnumerable<CellPosition> GetAliveCells()
+        {
+            return _currentState.GetLiveCells();
+        }
 
         public bool GetCellState(int row, int col)
         {
