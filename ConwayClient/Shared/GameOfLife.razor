@@ -97,6 +97,9 @@
     private DateTime _lastFrameTime;
     private const double DesiredFrameTime = 1.0 / 144.0;  // For 144 FPS
 
+    private double ZoomLevel { get; set; } = 1.0;
+    private double PanX { get; set; } = 0.0;
+    private double PanY { get; set; } = 0.0;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -339,5 +342,11 @@
     private void OnGameStateChanged(string newState)
     {
         gameState = newState;
+    }
+
+    private void HandleWheel(WheelEventArgs args)
+    {
+        ZoomLevel += args.DeltaY * 0.01; // Adjust the multiplier as needed
+        StateHasChanged(); // Trigger a re-render
     }
 }
