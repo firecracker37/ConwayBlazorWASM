@@ -13,7 +13,7 @@
     <div class="header white-text">
         <span class="title">Game Board</span>
     </div>
-    <div style="background-color: black; width: @canvasSize; height: @canvasSize;">
+    <div style="background-color: black; width: @canvasSize; height: @canvasSize;" @onwheel="HandleWheel" @onmousedown="HandleMouseDown" @onmousemove="HandleMouseMove" @onmouseup="HandleMouseUp" @onmouseleave="HandleMouseUp">
         <ConwayControlUi CanvasSize="@CanvasWidth"
                          ShowUI="@_showUI"
                          OnUIVisibilityChanged="ToggleUIVisibility"
@@ -67,6 +67,12 @@
     private int CanvasHeight => (int)canvasSize;
     private int CellWidth => CanvasWidth / Columns;
     private int CellHeight => CanvasHeight / Rows;
+    private double ZoomLevel { get; set; } = 1.0;
+    private double PanX { get; set; } = 0.0;
+    private double PanY { get; set; } = 0.0;
+    private bool isDragging = false;
+    private double initialMouseX;
+    private double initialMouseY;
 
     private string _deadCellColor = "#424242";
     public string DeadCellColor
@@ -168,23 +174,26 @@
     private async Task DrawGridLines(Canvas2DContext context, int canvasWidth, int canvasHeight, int cellWidth, int cellHeight)
     {
         await context.BeginBatchAsync();
+
+        // Set line width and stroke style
+        await context.SetLineWidthAsync(1);
         await context.SetStrokeStyleAsync(_gridLineColor);
 
-        // Drawing horizontal lines
+        // Drawing horizontal lines with pixel alignment
         for (int y = 0; y <= canvasHeight; y += cellHeight)
         {
             await context.BeginPathAsync();
-            await context.MoveToAsync(0, y);
-            await context.LineToAsync(canvasWidth, y);
+            await context.MoveToAsync(0, y + 0.5); // +0.5 for pixel alignment
+            await context.LineToAsync(canvasWidth, y + 0.5);
             await context.StrokeAsync();
         }
 
-        // Drawing vertical lines
+        // Drawing vertical lines with pixel alignment
         for (int x = 0; x <= canvasWidth; x += cellWidth)
         {
             await context.BeginPathAsync();
-            await context.MoveToAsync(x, 0);
-            await context.LineToAsync(x, canvasHeight);
+            await context.MoveToAsync(x + 0.5, 0); // +0.5 for pixel alignment
+            await context.LineToAsync(x + 0.5, canvasHeight);
             await context.StrokeAsync();
         }
 
@@ -304,12 +313,23 @@
     {
         try
         {
-            double scaleFactor = (double)canvasSize / (int)offscreenCanvasSize;
+            // Calculate source rectangle
+            double sourceX = PanX;
+            double sourceY = PanY;
+            double sourceWidth = CanvasWidth / ZoomLevel;
+            double sourceHeight = CanvasHeight / ZoomLevel;
+
+            // Calculate destination rectangle
+            double destX = 0;
+            double destY = 0;
+            double destWidth = CanvasWidth;
+            double destHeight = CanvasHeight;
+
             await _canvasContext.ClearRectAsync(0, 0, canvasSize, canvasSize);
             await _canvasContext.DrawImageAsync(
                 _bufferCanvasReference.CanvasReference,
-                0, 0, (int)offscreenCanvasSize, (int)offscreenCanvasSize,
-                0, 0, canvasSize, canvasSize
+                sourceX, sourceY, sourceWidth, sourceHeight, // source rectangle
+                destX, destY, destWidth, destHeight          // destination rectangle
             );
         }
         catch (Exception ex)
@@ -317,6 +337,24 @@
             Console.WriteLine($"Error drawing image: {ex.Message}");
         }
     }
+
+    // private async Task CompositeCanvases()
+    // {
+    //     try
+    //     {
+    //         double scaleFactor = (double)canvasSize / (int)offscreenCanvasSize;
+    //         await _canvasContext.ClearRectAsync(0, 0, canvasSize, canvasSize);
+    //         await _canvasContext.DrawImageAsync(
+    //             _bufferCanvasReference.CanvasReference,
+    //             0, 0, (int)offscreenCanvasSize, (int)offscreenCanvasSize,
+    //             0, 0, canvasSize, canvasSize
+    //         );
+    //     }
+    //     catch (Exception ex)
+    //     {
+    //         Console.WriteLine($"Error drawing image: {ex.Message}");
+    //     }
+    // }
 
     public void StartGame()
     {
@@ -373,6 +411,60 @@
         {
             Console.WriteLine($"Error during HandleCanvasInteraction: {ex.Message}");
         }
+    }
+
+    private void HandleWheel(WheelEventArgs args)
+    {
+        ZoomLevel -= args.DeltaY * 0.001;
+        ZoomLevel = Math.Clamp(ZoomLevel, 1.0, 5.0); // Example: min zoom = 0.1 (10x zoom out), max zoom = 5.0 (5x zoom in)
+
+        // Calculate the boundaries based on the zoom level and canvas size
+        double maxX = (offscreenCanvasSize - (canvasSize / ZoomLevel));
+        double maxY = (offscreenCanvasSize - (canvasSize / ZoomLevel));
+        PanX = Math.Clamp(PanX, 0, maxX);
+        PanY = Math.Clamp(PanY, 0, maxY);
+
+        Console.WriteLine($"Zoom Level Set to {ZoomLevel}");
+        StateHasChanged();
+    }
+
+    private void HandleMouseDown(MouseEventArgs args)
+    {
+        isDragging = true;
+        initialMouseX = args.ClientX;
+        initialMouseY = args.ClientY;
+    }
+
+    private void HandleMouseMove(MouseEventArgs args)
+    {
+        if (isDragging)
+        {
+            double deltaX = args.ClientX - initialMouseX;
+            double deltaY = args.ClientY - initialMouseY;
+
+            // Invert the movement
+            PanX -= deltaX / ZoomLevel;
+            PanY -= deltaY / ZoomLevel;
+
+            // Calculate the boundaries based on the zoom level and canvas size
+            double maxX = (offscreenCanvasSize - (canvasSize / ZoomLevel));
+            double maxY = (offscreenCanvasSize - (canvasSize / ZoomLevel));
+
+            // Clamp the pan values
+            PanX = Math.Clamp(PanX, 0, maxX);
+            PanY = Math.Clamp(PanY, 0, maxY);
+
+            // Update the initial position for the next move event
+            initialMouseX = args.ClientX;
+            initialMouseY = args.ClientY;
+
+            StateHasChanged(); // Trigger a re-render
+        }
+    }
+
+    private void HandleMouseUp(MouseEventArgs args)
+    {
+        isDragging = false;
     }
 
     [JSInvokable]
