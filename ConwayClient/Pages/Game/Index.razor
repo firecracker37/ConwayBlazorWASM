@@ -309,6 +309,34 @@
         }
     }
 
+    private async Task RenderMinimap()
+    {
+        // Constants for the minimap
+        double minimapSize = 100; // or another suitable size
+        double minimapPadding = 10; // space from the corner
+        double minimapX = CanvasWidth - minimapSize - minimapPadding;
+        double minimapY = CanvasHeight - minimapSize - minimapPadding;
+
+        // Draw the entire buffer canvas shrunk down to the minimap size
+        await _canvasContext.DrawImageAsync(
+            _bufferCanvasReference.CanvasReference,
+            0, 0, offscreenCanvasSize, offscreenCanvasSize,
+            minimapX, minimapY, minimapSize, minimapSize
+        );
+
+        // Calculate the viewport rectangle on the minimap
+        double viewportWidth = minimapSize / ZoomLevel;
+        double viewportHeight = minimapSize / ZoomLevel;
+        double viewportX = minimapX + (PanX / offscreenCanvasSize) * minimapSize;
+        double viewportY = minimapY + (PanY / offscreenCanvasSize) * minimapSize;
+
+        // Draw the viewport rectangle
+        await _canvasContext.SetStrokeStyleAsync("red"); // or another noticeable color
+        await _canvasContext.SetLineWidthAsync(2);
+        await _canvasContext.StrokeRectAsync(viewportX, viewportY, viewportWidth, viewportHeight);
+    }
+
+
     private async Task CompositeCanvases()
     {
         try
@@ -331,6 +359,11 @@
                 sourceX, sourceY, sourceWidth, sourceHeight, // source rectangle
                 destX, destY, destWidth, destHeight          // destination rectangle
             );
+
+            if (ZoomLevel > 1)
+            {
+                await RenderMinimap();
+            }
         }
         catch (Exception ex)
         {
@@ -446,6 +479,9 @@
             PanX -= deltaX / ZoomLevel;
             PanY -= deltaY / ZoomLevel;
 
+            // Log before clamping
+            Console.WriteLine($"Before Clamp: PanX: {PanX}, PanY: {PanY}");
+
             // Calculate the boundaries based on the zoom level and canvas size
             double maxX = (offscreenCanvasSize - (canvasSize / ZoomLevel));
             double maxY = (offscreenCanvasSize - (canvasSize / ZoomLevel));
@@ -453,6 +489,9 @@
             // Clamp the pan values
             PanX = Math.Clamp(PanX, 0, maxX);
             PanY = Math.Clamp(PanY, 0, maxY);
+
+            // Log after clamping
+            Console.WriteLine($"After Clamp: PanX: {PanX}, PanY: {PanY}");
 
             // Update the initial position for the next move event
             initialMouseX = args.ClientX;
@@ -472,12 +511,19 @@
     {
         if (IsGameRunning || isDragging) return;  // Don't toggle if the game is running or user is dragging
 
-        // Adjust for zoom and pan
-        double adjustedX = (x / ZoomLevel) - PanX;
-        double adjustedY = (y / ZoomLevel) - PanY;
+        // Adjust for pan and zoom
+        double adjustedX = PanX + (x / canvasSize) * (canvasSize / ZoomLevel);
+        double adjustedY = PanY + (y / canvasSize) * (canvasSize / ZoomLevel);
 
-        int col = (int)adjustedX / CellWidth;
-        int row = (int)adjustedY / CellHeight;
+        // Identify the cell
+        int col = (int)Math.Floor(adjustedX / CellWidth);
+        int row = (int)Math.Floor(adjustedY / CellHeight);
+
+        // Logging for debugging
+        // Console.WriteLine($"Canvas clicked at: {x}:{y}.");
+        // Console.WriteLine($"Pan Adjusted: {panAdjustedX}:{panAdjustedY}");
+        // Console.WriteLine($"Adjusted for zoom({ZoomLevel}) and pan({PanX}:{PanY}): {adjustedX}:{adjustedY}.");
+        // Console.WriteLine($"Identified as cell: {row}:{col}.");
 
         if (row >= 0 && row < Rows && col >= 0 && col < Columns)
         {
