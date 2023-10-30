@@ -16,16 +16,34 @@ window.requestAnimationLoop = (dotnetHelper) => {
     loop();
 };
 
-// Adds a click listener to the main canvas
+//// Adds a click listener to the main canvas
+//window.addMainCanvasClickListener = (dotnetHelper) => {
+//    const canvases = document.querySelectorAll('canvas');
+//    const mainCanvas = canvases[0]; // Assuming the main canvas is the first
+//    if (mainCanvas) {
+//        mainCanvas.addEventListener('click', (event) => {
+//            const rect = mainCanvas.getBoundingClientRect();
+//            const x = event.clientX - rect.left;
+//            const y = event.clientY - rect.top;
+//            dotnetHelper.invokeMethodAsync('CanvasClick', x, y);
+//        });
+//    }
+//};
+
 window.addMainCanvasClickListener = (dotnetHelper) => {
     const canvases = document.querySelectorAll('canvas');
-    const mainCanvas = canvases[0]; // Assuming the main canvas is the first
+    const mainCanvas = canvases[0];
     if (mainCanvas) {
         mainCanvas.addEventListener('click', (event) => {
             const rect = mainCanvas.getBoundingClientRect();
             const x = event.clientX - rect.left;
             const y = event.clientY - rect.top;
-            dotnetHelper.invokeMethodAsync('CanvasClick', x, y);
+            dotnetHelper.invokeMethodAsync('CanvasClick', x, y, event.button);
+        });
+
+        // Prevent default context menu from showing up on right click
+        mainCanvas.addEventListener('contextmenu', (event) => {
+            event.preventDefault();
         });
     }
 };
