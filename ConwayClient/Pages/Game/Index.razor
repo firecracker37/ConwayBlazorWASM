@@ -470,10 +470,14 @@
     [JSInvokable]
     public void CanvasClick(double x, double y)
     {
-        if (IsGameRunning) return;
+        if (IsGameRunning || isDragging) return;  // Don't toggle if the game is running or user is dragging
 
-        int col = (int)x / CellWidth;
-        int row = (int)y / CellHeight;
+        // Adjust for zoom and pan
+        double adjustedX = (x / ZoomLevel) - PanX;
+        double adjustedY = (y / ZoomLevel) - PanY;
+
+        int col = (int)adjustedX / CellWidth;
+        int row = (int)adjustedY / CellHeight;
 
         if (row >= 0 && row < Rows && col >= 0 && col < Columns)
         {
