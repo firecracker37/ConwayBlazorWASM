@@ -49,6 +49,7 @@
     private Canvas2DContext _gridCanvasContext;
     private BECanvasComponent _cellCanvasReference;
     private Canvas2DContext _cellCanvasContext;
+    private GameRenderer _gameRenderer;
 
     private DotNetObjectReference<Index> _objectReference;
     private GameBoard _gameBoard = null;
@@ -83,7 +84,6 @@
             if (_deadCellColor != value)
             {
                 _deadCellColor = value;
-                OnDeadCellColorChanged(); // Call a method when the value changes
             }
         }
     }
@@ -97,7 +97,7 @@
             if (_aliveCellColor != value)
             {
                 _aliveCellColor = value;
-                Task.Run(() => UpdateAliveCellsColor()); // Update the color of alive cells on the canvas
+                Task.Run(() => _gameRenderer.OnAliveCellColorChangedAsync(_aliveCellColor, CellWidth, CellHeight));
             }
         }
     }
@@ -111,11 +111,10 @@
             if (_gridLineColor != value)
             {
                 _gridLineColor = value;
-                Task.Run(() => OnGridLineColorChangedAsync()); // Call a method when the value changes
+                Task.Run(() => _gameRenderer.DrawGridLines(CanvasWidth, CanvasHeight, CellWidth, CellHeight, _gridLineColor));
             }
         }
     }
-
 
     private bool _showGridLines { get; set; } = false;
 
@@ -143,6 +142,12 @@
                 _gridCanvasContext = await _gridCanvasReference.CreateCanvas2DAsync();
                 _cellCanvasContext = await _cellCanvasReference.CreateCanvas2DAsync();
 
+                _gameRenderer = new GameRenderer(_gameBoard,
+                                 _canvasContext, _canvasReference,
+                                 _bufferCanvasContext, _bufferCanvasReference,
+                                 _gridCanvasContext, _gridCanvasReference,
+                                 _cellCanvasContext, _cellCanvasReference);
+
                 var viewportWidth = await JSRuntime.InvokeAsync<double>("getInnerWidth");
                 if (viewportWidth <= 768)
                 {
@@ -159,7 +164,7 @@
                 await JSRuntime.InvokeVoidAsync("addIndexCanvasInteractionListener", _objectReference);
 
                 // Draw the initial grid lines on the grid canvas
-                await DrawGridLines(_gridCanvasContext, CanvasWidth, CanvasHeight, CellWidth, CellHeight);
+                await _gameRenderer.DrawGridLines(CanvasWidth, CanvasHeight, CellWidth, CellHeight, _gridLineColor);
 
                 // Start the continuous rendering loop
                 await JSRuntime.InvokeVoidAsync("requestAnimationLoop", _objectReference);
@@ -169,35 +174,6 @@
                 Console.WriteLine($"Error during after first render: {ex.Message}");
             }
         }
-    }
-
-    private async Task DrawGridLines(Canvas2DContext context, int canvasWidth, int canvasHeight, int cellWidth, int cellHeight)
-    {
-        await context.BeginBatchAsync();
-
-        // Set line width and stroke style
-        await context.SetLineWidthAsync(1);
-        await context.SetStrokeStyleAsync(_gridLineColor);
-
-        // Drawing horizontal lines with pixel alignment
-        for (int y = 0; y <= canvasHeight; y += cellHeight)
-        {
-            await context.BeginPathAsync();
-            await context.MoveToAsync(0, y + 0.5); // +0.5 for pixel alignment
-            await context.LineToAsync(canvasWidth, y + 0.5);
-            await context.StrokeAsync();
-        }
-
-        // Drawing vertical lines with pixel alignment
-        for (int x = 0; x <= canvasWidth; x += cellWidth)
-        {
-            await context.BeginPathAsync();
-            await context.MoveToAsync(x + 0.5, 0); // +0.5 for pixel alignment
-            await context.LineToAsync(x + 0.5, canvasHeight);
-            await context.StrokeAsync();
-        }
-
-        await context.EndBatchAsync();
     }
 
     // This method will be called continuously by our game loop
@@ -212,164 +188,19 @@
             if (timeSinceLastFrame < DesiredFrameTime) return;
 
             // Update individual canvas elements
-            await Update();
+            await _gameRenderer.UpdateCellCanvas(_aliveCellColor, CellWidth, CellHeight);
 
             // Draw to the buffer canvas
-            await DrawToBufferCanvas();
+            await _gameRenderer.DrawToBufferCanvas(_deadCellColor, (int)offscreenCanvasSize, _showGridLines);
 
             // Composite the buffer canvas onto the main canvas
-            await CompositeCanvases();
+            await _gameRenderer.CompositeCanvases(PanX, PanY, ZoomLevel, CanvasWidth, CanvasHeight, (int)offscreenCanvasSize, _gridLineColor);
 
             _lastFrameTime = currentTime;
         }
         catch (Exception ex)
         {
             Console.WriteLine($"Error during render method: {ex.Message}");
-        }
-    }
-
-    private async Task Update()
-    {
-        try
-        {
-            await UpdateCellCanvas();
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Error during Update method: {ex.Message}");
-        }
-    }
-
-    private async Task UpdateCellCanvas()
-    {
-        try
-        {
-            if (_gameBoard.StateUpdated)
-            {
-                // Draw only the updated cells on the buffer canvas
-                await _cellCanvasContext.BeginBatchAsync();
-
-                var bornCells = _gameBoard.GetBornCells();
-                var deadCells = _gameBoard.GetDeadCells();
-
-                // Draw all newly born cells
-                await _cellCanvasContext.SetFillStyleAsync(_aliveCellColor);
-                foreach (var cell in bornCells)
-                {
-                    await _cellCanvasContext.FillRectAsync(cell.Col * CellWidth, cell.Row * CellHeight, CellWidth, CellHeight);
-                }
-
-                // Clear all newly dead cells
-                foreach (var cell in deadCells)
-                {
-                    await _cellCanvasContext.ClearRectAsync(cell.Col * CellWidth, cell.Row * CellHeight, CellWidth, CellHeight);
-                }
-
-                await _cellCanvasContext.EndBatchAsync();
-                _gameBoard.ResetStateUpdatedFlag();
-            }
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Error during UpdateCellCanvas method: {ex.Message}");
-        }
-    }
-
-    private async Task UpdateGridCanvas()
-    {
-        try
-        {
-            await DrawGridLines(_gridCanvasContext, CanvasWidth, CanvasHeight, CellWidth, CellHeight);
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Error during UpdateGridCanvas method: {ex.Message}");
-        }
-    }
-
-    private async Task DrawToBufferCanvas()
-    {
-        try
-        {
-            // Fill buffer with dead cell color
-            await _bufferCanvasContext.SetFillStyleAsync(_deadCellColor);
-            await _bufferCanvasContext.FillRectAsync(0, 0, (int)offscreenCanvasSize, (int)offscreenCanvasSize);
-
-            // Overlay live cells from cellCanvasContext onto bufferCanvasContext
-            await _bufferCanvasContext.DrawImageAsync(_cellCanvasReference.CanvasReference, 0, 0);
-
-            // Overlay grid lines if enabled
-            if (_showGridLines)
-                await _bufferCanvasContext.DrawImageAsync(_gridCanvasReference.CanvasReference, 0, 0);
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Error during DrawToBufferCanvas method: {ex.Message}");
-        }
-    }
-
-    private async Task RenderMinimap()
-    {
-        // Constants for the minimap
-        double minimapSize = 100; // or another suitable size
-        double minimapPadding = 10; // space from the corner
-        double minimapX = CanvasWidth - minimapSize - minimapPadding;
-        double minimapY = CanvasHeight - minimapSize - minimapPadding;
-
-        // Draw the entire buffer canvas shrunk down to the minimap size
-        await _canvasContext.DrawImageAsync(
-            _bufferCanvasReference.CanvasReference,
-            0, 0, offscreenCanvasSize, offscreenCanvasSize,
-            minimapX, minimapY, minimapSize, minimapSize
-        );
-
-        // Calculate the viewport rectangle on the minimap
-        double viewportWidth = minimapSize / ZoomLevel;
-        double viewportHeight = minimapSize / ZoomLevel;
-        double viewportX = minimapX + (PanX / offscreenCanvasSize) * minimapSize;
-        double viewportY = minimapY + (PanY / offscreenCanvasSize) * minimapSize;
-
-        // Draw the viewport rectangle
-        await _canvasContext.SetStrokeStyleAsync("red"); // or another noticeable color
-        await _canvasContext.SetLineWidthAsync(2);
-        await _canvasContext.StrokeRectAsync(viewportX, viewportY, viewportWidth, viewportHeight);
-
-        // Draw the border around the minimap
-        await _canvasContext.SetStrokeStyleAsync(_gridLineColor);
-        await _canvasContext.StrokeRectAsync(minimapX, minimapY, minimapSize, minimapSize);
-    }
-
-    private async Task CompositeCanvases()
-    {
-        try
-        {
-            // Calculate source rectangle
-            double sourceX = PanX;
-            double sourceY = PanY;
-            double sourceWidth = CanvasWidth / ZoomLevel;
-            double sourceHeight = CanvasHeight / ZoomLevel;
-
-            // Calculate destination rectangle
-            double destX = 0;
-            double destY = 0;
-            double destWidth = CanvasWidth;
-            double destHeight = CanvasHeight;
-
-            await _canvasContext.ClearRectAsync(0, 0, canvasSize, canvasSize);
-            await _canvasContext.DrawImageAsync(
-                _bufferCanvasReference.CanvasReference,
-                sourceX, sourceY, sourceWidth, sourceHeight, // source rectangle
-                destX, destY, destWidth, destHeight          // destination rectangle
-            );
-
-            if (ZoomLevel > 1)
-            {
-                await RenderMinimap();
-            }
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Error drawing image: {ex.Message}");
         }
     }
 
@@ -624,48 +455,6 @@
         {
             Console.WriteLine($"Failed to export game state. Message: {ex}");
             return false;
-        }
-    }
-
-    private void OnDeadCellColorChanged()
-    {
-        // Add additional logic here if needed
-    }
-
-    private void OnAliveCellColorChanged()
-    {
-        // Add additional logic here if needed
-    }
-
-    private async Task OnGridLineColorChangedAsync()
-    {
-        await DrawGridLines(_gridCanvasContext, CanvasWidth, CanvasHeight, CellWidth, CellHeight);
-    }
-
-    private async Task UpdateAliveCellsColor()
-    {
-        try
-        {
-            var aliveCells = _gameBoard.GetAliveCells();
-
-            // Begin drawing on the canvas
-            await _cellCanvasContext.BeginBatchAsync();
-
-            // Set the new fill style
-            await _cellCanvasContext.SetFillStyleAsync(_aliveCellColor); // Alive cell color
-
-            // Draw over all alive cells with the new color
-            foreach (var cell in aliveCells)
-            {
-                await _cellCanvasContext.FillRectAsync(cell.Col * CellWidth, cell.Row * CellHeight, CellWidth, CellHeight);
-            }
-
-            // End drawing on the canvas
-            await _cellCanvasContext.EndBatchAsync();
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Error during UpdateAliveCellsColor method: {ex.Message}");
         }
     }
 
