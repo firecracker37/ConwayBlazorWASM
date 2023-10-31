@@ -1,8 +1,6 @@
-﻿using Blazor.Extensions.Canvas.Canvas2D;
-using Blazor.Extensions.Canvas;
-using Blazor.Extensions;
+﻿using Blazor.Extensions;
+using Blazor.Extensions.Canvas.Canvas2D;
 using ConwayClient.Models;  // Assuming GameBoard is under this namespace
-using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace ConwayClient.Pages.Game
 {
@@ -83,8 +81,6 @@ namespace ConwayClient.Pages.Game
 
                     // Draw all newly born cells
                     await _cellCanvasContext.SetFillStyleAsync(cellColor);
-                    await _cellCanvasContext.FillRectAsync(5 * cellWidth, 5 * cellHeight, cellWidth, cellHeight);
-                    await _cellCanvasContext.FillRectAsync(10 * cellWidth, 10 * cellHeight, cellWidth, cellHeight);
                     foreach (var cell in bornCells)
                     {
                         await _cellCanvasContext.FillRectAsync(cell.Col * cellWidth, cell.Row * cellHeight, cellWidth, cellHeight);
@@ -192,11 +188,6 @@ namespace ConwayClient.Pages.Game
             // Draw the border around the minimap
             await _canvasContext.SetStrokeStyleAsync(gridLineColor);
             await _canvasContext.StrokeRectAsync(minimapX, minimapY, minimapSize, minimapSize);
-        }
-
-        public async Task OnGridLineColorChangedAsync()
-        {
-            // TODO: Implement logic
         }
 
         public async Task OnAliveCellColorChangedAsync(string aliveCellColor, int cellWidth, int cellHeight)
