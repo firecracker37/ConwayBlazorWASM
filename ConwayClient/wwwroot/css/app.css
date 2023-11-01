@@ -33,6 +33,10 @@ body, html {
     --error-color: #dc3545;
     --warning-color: #ffc107;
     --info-color: #0ea5e9; /* Skyblue for informational notifications */
+    --success-hover-color: #1e7a38; /* Darkened version of #28a745 */
+    --error-hover-color: #b02c39; /* Darkened version of #dc3545 */
+    --warning-hover-color: #e6a000; /* Darkened version of #ffc107 */
+    --info-hover-color: #0091c7; /* Darkened version of #0ea5e9 */
 }
 
 /* Improved dark theme */
@@ -58,6 +62,10 @@ body, html {
     --error-color: #CF6679;
     --warning-color: #FBD34D;
     --info-color: #68aef4; /* Lighter shade of skyblue for informational notifications in dark mode */
+    --success-hover-color: #01695e; /* Darkened version of #018786 */
+    --error-hover-color: #b2546b; /* Darkened version of #CF6679 */
+    --warning-hover-color: #d4a73c; /* Darkened version of #FBD34D */
+    --info-hover-color: #4c7edf; /* Darkened version of #68aef4 */
 }
 
 .ui-container {

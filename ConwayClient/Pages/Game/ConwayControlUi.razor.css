@@ -24,48 +24,48 @@
 
 
 .play-button {
-    background-color: #2ECC71;
-    color: #ECF0F1;
+    background-color: var(--success-color);
+    color: var(--button-text-color);
 }
 
     .play-button:hover {
-        background-color: #27AE60;
+        background-color: var(--success-hover-color);
     }
 
 .pause-button {
-    background-color: #E74C3C;
-    color: #ECF0F1;
+    background-color: var(--error-color);
+    color: var(--button-text-color);
 }
 
     .pause-button:hover {
-        background-color: #C0392B;
+        background-color: var(--error-hover-color);
     }
 
 .history-button {
-    background-color: #3498DB; /* Blue color */
-    color: #ECF0F1; /* White text */
+    background-color: var(--button-color);
+    color: var(--button-text-color);
 }
 
     .history-button:hover {
-        background-color: #2980B9; /* Slightly darker blue for hover effect */
+        background-color: var(--button-hover-color);
     }
 
 .randomize-button {
-    background-color: #F1C40F; /* Bright yellow color */
+    background-color: var(--warning-color);
     color: #34495E; /* Dark text color for contrast */
 }
 
     .randomize-button:hover {
-        background-color: #F39C12; /* Slightly darker yellow/orange for hover effect */
+        background-color: var(--warning-hover-color);
     }
 
 .reset-button {
-    background-color: #E74C3C;
-    color: #ECF0F1;
+    background-color: var(--error-color);
+    color: var(--button-text-color);
 }
 
     .reset-button:hover {
-        background-color: #C0392B;
+        background-color: var(--error-hover-color);
     }
 
 .button-top-center {
