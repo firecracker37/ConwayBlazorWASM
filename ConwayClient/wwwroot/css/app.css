@@ -1,41 +1,63 @@
-.flex-container {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    height: 100vh;
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box; /* This ensures padding doesn't add extra width/height */
 }
 
-.content {
-    text-align: center;
+body, html {
+    width: 100%;
+    height: 100%;
+    overflow-x: hidden; /* This prevents horizontal scrolling */
 }
 
-.loading-cell {
-    width: 200px;
-    height: 200px;
-    background-color: #424242;
-    border: 5px solid #bdbdbd;
-    margin: 20px auto;
-    box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19); /* Adds a subtle shadow for depth */
+/* Improved light theme */
+:root {
+    /* Background colors */
+    --background-color: #ebebf0; /* Light gray based on your initial color */
+    --secondary-background-color: #d0d1d6; /* A shade darker for contrast */
+    /* Text colors */
+    --text-color: #333333;
+    --secondary-text-color: #666666;
+    /* Link colors */
+    --link-color: #0ea5e9; /* Using skyblue for links as it stands out */
+    --link-hover-color: #0c8ac2; /* Darker shade for hover state */
+    /* Border colors */
+    --border-color: #b8b9be;
+    --border-focus-color: #4338ca; /* Using indigo for focused elements */
+    /* Other UI colors */
+    --button-color: #4338ca; /* Indigo for buttons */
+    --button-text-color: #ffffff;
+    --button-hover-color: #382db9; /* Darker shade of indigo for hover state */
+    /* Notification colors */
+    --success-color: #28a745;
+    --error-color: #dc3545;
+    --warning-color: #ffc107;
+    --info-color: #0ea5e9; /* Skyblue for informational notifications */
 }
 
-.no-margin {
-    margin: 0 !important;
-}
-
-.no-padding {
-    padding: 0 !important;
-}
-
-.d-flex {
-    display: flex;
-}
-
-.align-items-center {
-    align-items: center;
-}
-
-.justify-content-center {
-    justify-content: center;
+/* Improved dark theme */
+[data-theme='dark'] {
+    /* Background colors */
+    --background-color: #18181b;
+    --secondary-background-color: #121215; /* Slightly darker, but not black */
+    /* Text colors */
+    --text-color: #ebebf0; /* A light gray to contrast with the dark background */
+    --secondary-text-color: #b0b0b0;
+    /* Link colors */
+    --link-color: #68aef4; /* Lighter shade of skyblue for links in dark mode */
+    --link-hover-color: #4992d0; /* Darker shade for hover state */
+    /* Border colors */
+    --border-color: #28282d;
+    --border-focus-color: #68aef4; /* Skyblue for focused elements in dark mode */
+    /* Other UI colors */
+    --button-color: #4338ca; /* Indigo for buttons */
+    --button-text-color: #ebebf0; /* Light gray text for contrast on indigo buttons */
+    --button-hover-color: #382db9; /* Darker shade of indigo for hover state */
+    /* Notification colors */
+    --success-color: #018786;
+    --error-color: #CF6679;
+    --warning-color: #FBD34D;
+    --info-color: #68aef4; /* Lighter shade of skyblue for informational notifications in dark mode */
 }
 
 .ui-container {

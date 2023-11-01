@@ -9,11 +9,8 @@
 @using Blazor.Extensions.Canvas
 @using Blazor.Extensions
 
-<div class="game-container blue-grey darken-1" style="width: 100%; max-width: 100%;">
-    <div class="header white-text">
-        <span class="title">Game Board</span>
-    </div>
-    <div style="background-color: black; width: @canvasSize; height: @canvasSize;" @onwheel="HandleWheel" @onmousedown="HandleMouseDown" @onmousemove="HandleMouseMove" @onmouseup="HandleMouseUp" @onmouseleave="HandleMouseUp">
+<div class="game-container" style="width: 100%; max-width: 100%;">
+    <div class="canvas-container" style="width: @CanvasWidth; height: @CanvasHeight;" @onwheel="HandleWheel" @onmousedown="HandleMouseDown" @onmousemove="HandleMouseMove" @onmouseup="HandleMouseUp" @onmouseleave="HandleMouseUp">
         <ConwayControlUi CanvasSize="@CanvasWidth"
                          ShowUI="@_showUI"
                          OnUIVisibilityChanged="ToggleUIVisibility"
